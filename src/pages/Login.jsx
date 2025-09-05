@@ -10,7 +10,7 @@ export default function Login() {
   const handleSubmit = (e) => {
     e.preventDefault();
     // Dummy login logic
-    if (email === 'admin@example.com' && password === 'password') {
+    if (email === 'bmsadmin' && password === 'admin') {
       setError('');
       navigate('/Welcome', { replace: true });
     } else {
@@ -27,7 +27,7 @@ export default function Login() {
         <div className="mb-4">
           <label className="block mb-1 font-medium">Email</label>
           <input
-            type="email"
+            type="text"
             className="w-full border rounded px-3 py-2"
             value={email}
             onChange={e => setEmail(e.target.value)}
