@@ -19,9 +19,10 @@ export default function Login() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-100">
+    <div className="min-h-full flex items-center justify-center">
       <form onSubmit={handleSubmit} className="bg-white p-8 rounded-lg shadow-md w-full max-w-sm">
-        <h2 className="text-2xl font-bold mb-6 text-center">Login</h2>
+      <h2 className="text-3xl font-bold mb-6 text-center text-blue-600">BMSPRO</h2>
+        <h2 className="text-xl font-bold mb-6 text-center">Admin Login</h2>
         {error && <div className="mb-4 text-red-600 text-sm">{error}</div>}
         <div className="mb-4">
           <label className="block mb-1 font-medium">Email</label>
