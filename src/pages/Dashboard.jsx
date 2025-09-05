@@ -1,4 +1,5 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import {
   Plus,
@@ -94,6 +95,7 @@ const sampleData = {
 };
 
 export default function Dashboard() {
+  const navigate = useNavigate();
   return (
     <main className="space-y-6">
       {/* Header */}
@@ -105,13 +107,9 @@ export default function Dashboard() {
           </p>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline">
+          <Button variant="outline" onClick={() => navigate('/calendar')}>
             <Calendar className="mr-2 h-4 w-4" />
             View Calendar
-          </Button>
-          <Button>
-            <Plus className="mr-2 h-4 w-4" />
-            New Booking
           </Button>
         </div>
       </header>

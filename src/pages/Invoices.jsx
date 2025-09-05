@@ -618,7 +618,7 @@ const InvoiceDetailPane = ({ invoice, onClose }) => {
           
           {/* Supplier Details */}
           <div className="text-sm space-y-2 bg-white/50 rounded-lg p-3">
-            <p className="font-bold text-gray-900">BMSPRO Cranbourne Public Hall</p>
+            <p className="font-bold text-gray-900">BMSPRO</p>
             <p className="text-gray-700">123 High Street, Cranbourne VIC 3977</p>
             <p className="font-medium text-gray-800">ABN: 12 345 678 901</p>
           </div>

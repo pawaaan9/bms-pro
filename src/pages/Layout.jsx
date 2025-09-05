@@ -372,8 +372,8 @@ export default function Layout({ children, currentPageName }) {
             <div className="p-6 border-b border-gray-200">
               <div className="flex items-center justify-between">
                 <div>
-                  <h2 className="text-blue-600 text-xs font-bold">BMSPRO</h2>
-                  <p className="text-sm text-gray-500 mt-1">Cranbourne Public Hall</p>
+                  <h2 className="text-blue-600 text-xl font-bold">BMSPRO</h2>
+                  {/* <p className="text-sm text-gray-500 mt-1">Hall name here</p> */}
                 </div>
                 <button
                   className="md:hidden p-2 rounded-md hover:bg-gray-100"
