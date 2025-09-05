@@ -137,18 +137,19 @@ export default function Calendar() {
               role="tablist"
               aria-label="Calendar view options"
             >
-              {["Day", "Week", "Month", "Resource"].map((viewOption) => (
-                <Button
-                  key={viewOption}
-                  role="tab"
-                  aria-selected={view === viewOption}
-                  variant={view === viewOption ? "default" : "ghost"}
-                  size="sm"
-                  onClick={() => setView(viewOption)}
-                >
-                  {viewOption}
-                </Button>
-              ))}
+                    {['Day', 'Week', 'Month', 'Resource'].map((viewOption) => (
+                      <Button
+                        key={viewOption}
+                        role="tab"
+                        aria-selected={view === viewOption}
+                        variant={view === viewOption ? "default" : "ghost"}
+                        size="sm"
+                        onClick={() => setView(viewOption)}
+                        className={view === viewOption ? "bg-gray-200 text-primary font-semibold" : ""}
+                      >
+                        {viewOption}
+                      </Button>
+                    ))}
             </div>
 
             {/* Date Navigation */}
