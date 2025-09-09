@@ -395,12 +395,6 @@ export default function Layout({ children, currentPageName }) {
                   {user?.role === 'hall_owner' && user?.hallName && (
                     <p className="text-sm text-gray-500 mt-1">{user.hallName}</p>
                   )}
-                  {/* Debug info - remove in production */}
-                  {process.env.NODE_ENV === 'development' && user && (
-                    <p className="text-xs text-gray-400 mt-1">
-                      Debug: {user.role} - {user.hallName || 'No hall name'}
-                    </p>
-                  )}
                 </div>
                 <button
                   className="md:hidden p-2 rounded-md hover:bg-gray-100"
