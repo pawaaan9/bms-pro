@@ -69,6 +69,11 @@ const navigationItems = [
   icon: Users
 },
 {
+  title: "Users",
+  url: createPageUrl("Users"),
+  icon: Users
+},
+{
   title: "Reports",
   url: createPageUrl("Reports"),
   icon: FileText

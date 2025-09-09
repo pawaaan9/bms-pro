@@ -31,6 +31,8 @@ import PricingRatecards from "./PricingRatecards";
 
 import PricingAddons from "./PricingAddons";
 
+
+import Users from "./Users";
 import Customers from "./Customers";
 
 import Reports from "./Reports";
@@ -94,6 +96,7 @@ const PAGES = {
     PricingAddons: PricingAddons,
     
     Customers: Customers,
+    Users: Users,
     
     Reports: Reports,
     
@@ -178,6 +181,7 @@ function PagesContent() {
                 <Route path="/PricingAddons" element={<PricingAddons />} />
                 
                 <Route path="/Customers" element={<Customers />} />
+                <Route path="/Users" element={<Users />} />
                 
                 <Route path="/Reports" element={<Reports />} />
                 
