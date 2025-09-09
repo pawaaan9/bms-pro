@@ -7,8 +7,10 @@ import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Search, Filter, Users as UsersIcon, Plus, Mail, Lock, Building2, MapPin, User, Shield, Home } from 'lucide-react';
+import { useAuth } from '@/contexts/AuthContext';
 
 export default function Users() {
+  const { isSuperAdmin, loading: authLoading } = useAuth();
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -33,23 +35,32 @@ export default function Users() {
   const [successMessage, setSuccessMessage] = useState('');
   const [showEditModal, setShowEditModal] = useState(false);
   const [editingUser, setEditingUser] = useState(null);
-  const [currentUserRole, setCurrentUserRole] = useState('super_admin'); // This should come from auth context
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [userToDelete, setUserToDelete] = useState(null);
 
+  // Redirect hall owners away from this page
   useEffect(() => {
-    fetch('http://localhost:5000/api/users')
-      .then(res => res.json())
-      .then(data => {
-        setUsers(data);
-        setFiltered(data);
-        setLoading(false);
-      })
-      .catch(err => {
-        setError('Failed to fetch users');
-        setLoading(false);
-      });
-  }, []);
+    if (!authLoading && !isSuperAdmin()) {
+      window.location.href = '/Dashboard';
+    }
+  }, [authLoading, isSuperAdmin]);
+
+  useEffect(() => {
+    // Only fetch users if user is super admin
+    if (isSuperAdmin()) {
+      fetch('http://localhost:5000/api/users')
+        .then(res => res.json())
+        .then(data => {
+          setUsers(data);
+          setFiltered(data);
+          setLoading(false);
+        })
+        .catch(err => {
+          setError('Failed to fetch users');
+          setLoading(false);
+        });
+    }
+  }, [isSuperAdmin]);
 
   useEffect(() => {
     let filteredUsers = users;
@@ -259,6 +270,32 @@ export default function Users() {
 
   const uniqueRoles = [...new Set(users.map(u => u.role).filter(Boolean))];
 
+  // Show loading while checking authentication
+  if (authLoading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-center">
+          <UsersIcon className="h-8 w-8 animate-spin mx-auto mb-2" />
+          <p className="text-muted-foreground">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Show access denied for hall owners
+  if (!isSuperAdmin()) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-center">
+          <Shield className="h-12 w-12 text-red-500 mx-auto mb-4" />
+          <h2 className="text-xl font-semibold text-gray-900 mb-2">Access Denied</h2>
+          <p className="text-gray-600">You don't have permission to view this page.</p>
+          <p className="text-sm text-gray-500 mt-2">Only Super Admins can access user management.</p>
+        </div>
+      </div>
+    );
+  }
+
   if (loading) return (
     <div className="flex items-center justify-center h-64">
       <div className="text-center">
@@ -459,7 +496,7 @@ export default function Users() {
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-1">
-                        {currentUserRole === 'super_admin' ? (
+                        {isSuperAdmin() ? (
                           <>
                             <Button 
                               variant="ghost" 

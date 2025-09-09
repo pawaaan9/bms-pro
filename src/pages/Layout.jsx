@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { createPageUrl } from "@/utils";
+import { useAuth } from "@/contexts/AuthContext";
 import {
   LayoutDashboard,
   Calendar,
@@ -116,6 +117,7 @@ export default function Layout({ children, currentPageName }) {
   const location = useLocation();
   const [expandedItems, setExpandedItems] = useState(new Set());
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const { isSuperAdmin } = useAuth();
 
   // Auto-expand parent menu if child route is active
   useEffect(() => {
@@ -389,42 +391,49 @@ export default function Layout({ children, currentPageName }) {
             </div>
             <nav className="p-4">
               <ul className="space-y-1">
-                {navigationItems.map((item) =>
-                  <li key={item.title}>
-                    {item.children ?
-                      <details open={expandedItems.has(item.title)}>
-                        <summary
-                          className={`nav-summary ${hasActiveChild(item) ? 'active' : ''} ${expandedItems.has(item.title) ? 'expanded' : ''}`}
-                          onClick={(e) => {
-                            e.preventDefault();
-                            toggleExpanded(item.title);
-                          }}>
+                {navigationItems.map((item) => {
+                  // Hide Users menu item for hall owners
+                  if (item.title === "Users" && !isSuperAdmin()) {
+                    return null;
+                  }
+                  
+                  return (
+                    <li key={item.title}>
+                      {item.children ?
+                        <details open={expandedItems.has(item.title)}>
+                          <summary
+                            className={`nav-summary ${hasActiveChild(item) ? 'active' : ''} ${expandedItems.has(item.title) ? 'expanded' : ''}`}
+                            onClick={(e) => {
+                              e.preventDefault();
+                              toggleExpanded(item.title);
+                            }}>
+                            <item.icon className="w-5 h-5" />
+                            <span>{item.title}</span>
+                          </summary>
+                          <ul className="nav-children">
+                            {item.children.map((child) =>
+                              <li key={child.title}>
+                                <Link
+                                  to={child.url}
+                                  className={`nav-child-link ${isActiveRoute(child.url) ? 'active' : ''}`}
+                                  onClick={closeMobileMenu}>
+                                  {child.title}
+                                </Link>
+                              </li>
+                            )}
+                          </ul>
+                        </details> :
+                        <Link
+                          to={item.url}
+                          className={`nav-link ${isActiveRoute(item.url) ? 'active' : ''}`}
+                          onClick={closeMobileMenu}>
                           <item.icon className="w-5 h-5" />
                           <span>{item.title}</span>
-                        </summary>
-                        <ul className="nav-children">
-                          {item.children.map((child) =>
-                            <li key={child.title}>
-                              <Link
-                                to={child.url}
-                                className={`nav-child-link ${isActiveRoute(child.url) ? 'active' : ''}`}
-                                onClick={closeMobileMenu}>
-                                {child.title}
-                              </Link>
-                            </li>
-                          )}
-                        </ul>
-                      </details> :
-                      <Link
-                        to={item.url}
-                        className={`nav-link ${isActiveRoute(item.url) ? 'active' : ''}`}
-                        onClick={closeMobileMenu}>
-                        <item.icon className="w-5 h-5" />
-                        <span>{item.title}</span>
-                      </Link>
-                    }
-                  </li>
-                )}
+                        </Link>
+                      }
+                    </li>
+                  );
+                })}
               </ul>
             </nav>
           </aside>

@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '@/contexts/AuthContext';
 
 
 export default function Login() {
@@ -8,6 +9,7 @@ export default function Login() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+  const { login } = useAuth();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -22,9 +24,8 @@ export default function Login() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || 'Login failed');
-      // Save token/role as needed
-      localStorage.setItem('token', data.token);
-      localStorage.setItem('role', data.role);
+      // Save token/role using auth context
+      login(data.token, data.role);
       navigate('/Welcome', { replace: true });
     } catch (err) {
       setError(err.message);
