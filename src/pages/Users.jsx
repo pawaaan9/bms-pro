@@ -34,6 +34,8 @@ export default function Users() {
   const [showEditModal, setShowEditModal] = useState(false);
   const [editingUser, setEditingUser] = useState(null);
   const [currentUserRole, setCurrentUserRole] = useState('super_admin'); // This should come from auth context
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [userToDelete, setUserToDelete] = useState(null);
 
   useEffect(() => {
     fetch('http://localhost:5000/api/users')
@@ -96,13 +98,16 @@ export default function Users() {
     setShowEditModal(true);
   };
 
-  const handleDeleteUser = async (userId) => {
-    if (!window.confirm('Are you sure you want to delete this user? This action cannot be undone.')) {
-      return;
-    }
+  const handleDeleteUser = (user) => {
+    setUserToDelete(user);
+    setShowDeleteModal(true);
+  };
+
+  const confirmDeleteUser = async () => {
+    if (!userToDelete) return;
 
     try {
-      const response = await fetch(`http://localhost:5000/api/users/${userId}`, {
+      const response = await fetch(`http://localhost:5000/api/users/${userToDelete.id}`, {
         method: 'DELETE',
       });
 
@@ -114,6 +119,10 @@ export default function Users() {
         const updatedUsers = await fetch('http://localhost:5000/api/users').then(res => res.json());
         setUsers(updatedUsers);
         setFiltered(updatedUsers);
+        
+        // Close modal and reset
+        setShowDeleteModal(false);
+        setUserToDelete(null);
       } else {
         const errorData = await response.json();
         setError(errorData.message || 'Failed to delete user');
@@ -465,7 +474,7 @@ export default function Users() {
                               variant="ghost" 
                               size="sm" 
                               className="h-8 w-8 p-0 text-red-600 hover:text-red-700"
-                              onClick={() => handleDeleteUser(user.id)}
+                              onClick={() => handleDeleteUser(user)}
                             >
                               <span className="sr-only">Delete</span>
                               🗑️
@@ -1000,6 +1009,78 @@ export default function Users() {
                 Cancel
               </Button>
             </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirmation Modal */}
+      <Dialog open={showDeleteModal} onOpenChange={setShowDeleteModal}>
+        <DialogContent className="w-[90vw] max-w-sm mx-auto">
+          <div className="flex items-center gap-2 mb-3">
+            <div className="p-1.5 bg-red-100 rounded-full">
+              <div className="w-4 h-4 text-red-600 flex items-center justify-center text-sm">
+                ⚠️
+              </div>
+            </div>
+            <div>
+              <DialogTitle className="text-base font-semibold text-gray-900">Delete User</DialogTitle>
+              <p className="text-xs text-gray-500">This action cannot be undone</p>
+            </div>
+          </div>
+
+          {userToDelete && (
+            <div className="mb-4">
+              <div className="bg-gray-50 rounded-md p-3">
+                <div className="flex items-center gap-2">
+                  <div className="p-1.5 bg-gray-200 rounded-md">
+                    <User className="h-3 w-3 text-gray-600" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-gray-900 truncate">{userToDelete.email}</p>
+                    <div className="flex items-center gap-1.5 mt-1">
+                      <Badge variant={getRoleBadgeVariant(userToDelete.role)} className="text-xs">
+                        {userToDelete.role}
+                      </Badge>
+                      {userToDelete.hallName && (
+                        <span className="text-xs text-gray-500 truncate">{userToDelete.hallName}</span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          <div className="bg-red-50 border border-red-200 rounded-md p-3 mb-4">
+            <div className="flex items-start gap-2">
+              <div className="w-3 h-3 text-red-600 mt-0.5 text-xs">⚠️</div>
+              <div>
+                <p className="text-xs font-medium text-red-800">Warning</p>
+                <p className="text-xs text-red-700 mt-1">
+                  This will permanently delete the user account and all associated data.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className="flex flex-col sm:flex-row gap-2">
+            <Button
+              variant="outline"
+              onClick={() => {
+                setShowDeleteModal(false);
+                setUserToDelete(null);
+              }}
+              className="flex-1 sm:flex-none sm:px-4 h-8 text-sm"
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={confirmDeleteUser}
+              className="flex-1 sm:flex-none sm:px-4 h-8 text-sm bg-red-600 hover:bg-red-700"
+            >
+              Delete User
+            </Button>
           </div>
         </DialogContent>
       </Dialog>
