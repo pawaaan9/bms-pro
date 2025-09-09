@@ -25,7 +25,7 @@ export default function Login() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || 'Login failed');
       // Save token/role using auth context
-      login(data.token, data.role);
+      await login(data.token, data.role);
       navigate('/Welcome', { replace: true });
     } catch (err) {
       setError(err.message);
@@ -35,7 +35,7 @@ export default function Login() {
   };
 
   return (
-    <div className="min-h-full flex items-center justify-center">
+    <div className="min-h-screen flex items-center justify-center">
       <form onSubmit={handleSubmit} className="bg-white p-8 rounded-lg shadow-md w-full max-w-sm">
         <h2 className="text-3xl font-bold mb-6 text-center text-blue-600">BMSPRO</h2>
         <h2 className="text-xl font-bold mb-6 text-center">Admin Login</h2>

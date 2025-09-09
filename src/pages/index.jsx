@@ -62,6 +62,7 @@ import Audit from "./Audit";
 import Help from "./Help";
 
 import { BrowserRouter as Router, Route, Routes, useLocation, Navigate } from 'react-router-dom';
+import ProtectedRoute from '@/components/ProtectedRoute';
 
 const PAGES = {
     
@@ -145,72 +146,253 @@ function PagesContent() {
     const currentPage = _getCurrentPage(location.pathname);
     
     return (
-        <Layout currentPageName={currentPage}>
-            <Routes>
-                {/* Redirect root to /login */}
-                <Route path="/" element={<Navigate to="/login" replace />} />
-                <Route path="/login" element={<Login />} />
-                <Route path="/Welcome" element={<Welcome />} />
-                
-                <Route path="/Dashboard" element={<Dashboard />} />
-                
-                <Route path="/Calendar" element={<Calendar />} />
-                
-                <Route path="/BookingsAll" element={<BookingsAll />} />
-                
-                <Route path="/BookingsPending" element={<BookingsPending />} />
-                
-                <Route path="/BookingsHolds" element={<BookingsHolds />} />
-                
-                <Route path="/BookingsConfirmed" element={<BookingsConfirmed />} />
-                
-                <Route path="/BookingsCompleted" element={<BookingsCompleted />} />
-                
-                <Route path="/BookingsCancelled" element={<BookingsCancelled />} />
-                
-                <Route path="/Invoices" element={<Invoices />} />
-                
-                <Route path="/ResourcesHalls" element={<ResourcesHalls />} />
-                
-                <Route path="/ResourcesHolidays" element={<ResourcesHolidays />} />
-                
-                <Route path="/ResourcesBlockouts" element={<ResourcesBlockouts />} />
-                
-                <Route path="/PricingRatecards" element={<PricingRatecards />} />
-                
-                <Route path="/PricingAddons" element={<PricingAddons />} />
-                
-                <Route path="/Customers" element={<Customers />} />
-                <Route path="/Users" element={<Users />} />
-                
-                <Route path="/Reports" element={<Reports />} />
-                
-                <Route path="/CommsMessages" element={<CommsMessages />} />
-                
-                <Route path="/CommsTemplates" element={<CommsTemplates />} />
-                
-                <Route path="/SettingsGeneral" element={<SettingsGeneral />} />
-                
-                <Route path="/SettingsPayments" element={<SettingsPayments />} />
-                
-                <Route path="/SettingsTaxes" element={<SettingsTaxes />} />
-                
-                <Route path="/SettingsAvailability" element={<SettingsAvailability />} />
-                
-                <Route path="/SettingsPolicies" element={<SettingsPolicies />} />
-                
-                <Route path="/SettingsRoles" element={<SettingsRoles />} />
-                
-                <Route path="/SettingsIntegrations" element={<SettingsIntegrations />} />
-                
-                <Route path="/SettingsPrivacy" element={<SettingsPrivacy />} />
-                
-                <Route path="/Audit" element={<Audit />} />
-                
-                <Route path="/Help" element={<Help />} />
-                
-            </Routes>
-        </Layout>
+        <Routes>
+            {/* Redirect root to /login */}
+            <Route path="/" element={<Navigate to="/login" replace />} />
+            <Route path="/login" element={<Login />} />
+            
+            {/* All other routes are protected */}
+            <Route path="/Welcome" element={
+                <ProtectedRoute>
+                    <Layout currentPageName={currentPage}>
+                        <Welcome />
+                    </Layout>
+                </ProtectedRoute>
+            } />
+            
+            <Route path="/Dashboard" element={
+                <ProtectedRoute>
+                    <Layout currentPageName={currentPage}>
+                        <Dashboard />
+                    </Layout>
+                </ProtectedRoute>
+            } />
+            
+            <Route path="/Calendar" element={
+                <ProtectedRoute>
+                    <Layout currentPageName={currentPage}>
+                        <Calendar />
+                    </Layout>
+                </ProtectedRoute>
+            } />
+            
+            <Route path="/BookingsAll" element={
+                <ProtectedRoute>
+                    <Layout currentPageName={currentPage}>
+                        <BookingsAll />
+                    </Layout>
+                </ProtectedRoute>
+            } />
+            
+            <Route path="/BookingsPending" element={
+                <ProtectedRoute>
+                    <Layout currentPageName={currentPage}>
+                        <BookingsPending />
+                    </Layout>
+                </ProtectedRoute>
+            } />
+            
+            <Route path="/BookingsHolds" element={
+                <ProtectedRoute>
+                    <Layout currentPageName={currentPage}>
+                        <BookingsHolds />
+                    </Layout>
+                </ProtectedRoute>
+            } />
+            
+            <Route path="/BookingsConfirmed" element={
+                <ProtectedRoute>
+                    <Layout currentPageName={currentPage}>
+                        <BookingsConfirmed />
+                    </Layout>
+                </ProtectedRoute>
+            } />
+            
+            <Route path="/BookingsCompleted" element={
+                <ProtectedRoute>
+                    <Layout currentPageName={currentPage}>
+                        <BookingsCompleted />
+                    </Layout>
+                </ProtectedRoute>
+            } />
+            
+            <Route path="/BookingsCancelled" element={
+                <ProtectedRoute>
+                    <Layout currentPageName={currentPage}>
+                        <BookingsCancelled />
+                    </Layout>
+                </ProtectedRoute>
+            } />
+            
+            <Route path="/Invoices" element={
+                <ProtectedRoute>
+                    <Layout currentPageName={currentPage}>
+                        <Invoices />
+                    </Layout>
+                </ProtectedRoute>
+            } />
+            
+            <Route path="/ResourcesHalls" element={
+                <ProtectedRoute>
+                    <Layout currentPageName={currentPage}>
+                        <ResourcesHalls />
+                    </Layout>
+                </ProtectedRoute>
+            } />
+            
+            <Route path="/ResourcesHolidays" element={
+                <ProtectedRoute>
+                    <Layout currentPageName={currentPage}>
+                        <ResourcesHolidays />
+                    </Layout>
+                </ProtectedRoute>
+            } />
+            
+            <Route path="/ResourcesBlockouts" element={
+                <ProtectedRoute>
+                    <Layout currentPageName={currentPage}>
+                        <ResourcesBlockouts />
+                    </Layout>
+                </ProtectedRoute>
+            } />
+            
+            <Route path="/PricingRatecards" element={
+                <ProtectedRoute>
+                    <Layout currentPageName={currentPage}>
+                        <PricingRatecards />
+                    </Layout>
+                </ProtectedRoute>
+            } />
+            
+            <Route path="/PricingAddons" element={
+                <ProtectedRoute>
+                    <Layout currentPageName={currentPage}>
+                        <PricingAddons />
+                    </Layout>
+                </ProtectedRoute>
+            } />
+            
+            <Route path="/Customers" element={
+                <ProtectedRoute>
+                    <Layout currentPageName={currentPage}>
+                        <Customers />
+                    </Layout>
+                </ProtectedRoute>
+            } />
+            
+            <Route path="/Users" element={
+                <ProtectedRoute>
+                    <Layout currentPageName={currentPage}>
+                        <Users />
+                    </Layout>
+                </ProtectedRoute>
+            } />
+            
+            <Route path="/Reports" element={
+                <ProtectedRoute>
+                    <Layout currentPageName={currentPage}>
+                        <Reports />
+                    </Layout>
+                </ProtectedRoute>
+            } />
+            
+            <Route path="/CommsMessages" element={
+                <ProtectedRoute>
+                    <Layout currentPageName={currentPage}>
+                        <CommsMessages />
+                    </Layout>
+                </ProtectedRoute>
+            } />
+            
+            <Route path="/CommsTemplates" element={
+                <ProtectedRoute>
+                    <Layout currentPageName={currentPage}>
+                        <CommsTemplates />
+                    </Layout>
+                </ProtectedRoute>
+            } />
+            
+            <Route path="/SettingsGeneral" element={
+                <ProtectedRoute>
+                    <Layout currentPageName={currentPage}>
+                        <SettingsGeneral />
+                    </Layout>
+                </ProtectedRoute>
+            } />
+            
+            <Route path="/SettingsPayments" element={
+                <ProtectedRoute>
+                    <Layout currentPageName={currentPage}>
+                        <SettingsPayments />
+                    </Layout>
+                </ProtectedRoute>
+            } />
+            
+            <Route path="/SettingsTaxes" element={
+                <ProtectedRoute>
+                    <Layout currentPageName={currentPage}>
+                        <SettingsTaxes />
+                    </Layout>
+                </ProtectedRoute>
+            } />
+            
+            <Route path="/SettingsAvailability" element={
+                <ProtectedRoute>
+                    <Layout currentPageName={currentPage}>
+                        <SettingsAvailability />
+                    </Layout>
+                </ProtectedRoute>
+            } />
+            
+            <Route path="/SettingsPolicies" element={
+                <ProtectedRoute>
+                    <Layout currentPageName={currentPage}>
+                        <SettingsPolicies />
+                    </Layout>
+                </ProtectedRoute>
+            } />
+            
+            <Route path="/SettingsRoles" element={
+                <ProtectedRoute>
+                    <Layout currentPageName={currentPage}>
+                        <SettingsRoles />
+                    </Layout>
+                </ProtectedRoute>
+            } />
+            
+            <Route path="/SettingsIntegrations" element={
+                <ProtectedRoute>
+                    <Layout currentPageName={currentPage}>
+                        <SettingsIntegrations />
+                    </Layout>
+                </ProtectedRoute>
+            } />
+            
+            <Route path="/SettingsPrivacy" element={
+                <ProtectedRoute>
+                    <Layout currentPageName={currentPage}>
+                        <SettingsPrivacy />
+                    </Layout>
+                </ProtectedRoute>
+            } />
+            
+            <Route path="/Audit" element={
+                <ProtectedRoute>
+                    <Layout currentPageName={currentPage}>
+                        <Audit />
+                    </Layout>
+                </ProtectedRoute>
+            } />
+            
+            <Route path="/Help" element={
+                <ProtectedRoute>
+                    <Layout currentPageName={currentPage}>
+                        <Help />
+                    </Layout>
+                </ProtectedRoute>
+            } />
+            
+        </Routes>
     );
 }
 

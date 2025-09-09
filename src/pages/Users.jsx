@@ -38,12 +38,7 @@ export default function Users() {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [userToDelete, setUserToDelete] = useState(null);
 
-  // Redirect hall owners away from this page
-  useEffect(() => {
-    if (!authLoading && !isSuperAdmin()) {
-      window.location.href = '/Dashboard';
-    }
-  }, [authLoading, isSuperAdmin]);
+  // Note: Route protection is now handled by ProtectedRoute component
 
   useEffect(() => {
     // Only fetch users if user is super admin

@@ -16,7 +16,8 @@ import {
   Building2,
   Tag,
   Menu,
-  X } from
+  X,
+  LogOut } from
 "lucide-react";
 
 const navigationItems = [
@@ -117,7 +118,8 @@ export default function Layout({ children, currentPageName }) {
   const location = useLocation();
   const [expandedItems, setExpandedItems] = useState(new Set());
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const { isSuperAdmin } = useAuth();
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+  const { isSuperAdmin, logout, user } = useAuth();
 
   // Auto-expand parent menu if child route is active
   useEffect(() => {
@@ -147,6 +149,14 @@ export default function Layout({ children, currentPageName }) {
 
   const closeMobileMenu = () => {
     setIsMobileMenuOpen(false);
+  };
+
+  const handleLogout = () => {
+    setShowLogoutConfirm(true);
+  };
+
+  const confirmLogout = () => {
+    logout();
   };
 
   const isActiveRoute = (url) => location.pathname === url;
@@ -198,6 +208,8 @@ export default function Layout({ children, currentPageName }) {
           flex-shrink: 0;
           box-shadow: 2px 0 8px rgba(0, 0, 0, 0.05);
           transition: transform 0.3s ease;
+          display: flex;
+          flex-direction: column;
         }
 
         @media (max-width: 768px) {
@@ -380,7 +392,15 @@ export default function Layout({ children, currentPageName }) {
               <div className="flex items-center justify-between">
                 <div>
                   <h2 className="text-blue-600 text-xl font-bold">BMSPRO</h2>
-                  {/* <p className="text-sm text-gray-500 mt-1">Hall name here</p> */}
+                  {user?.role === 'hall_owner' && user?.hallName && (
+                    <p className="text-sm text-gray-500 mt-1">{user.hallName}</p>
+                  )}
+                  {/* Debug info - remove in production */}
+                  {process.env.NODE_ENV === 'development' && user && (
+                    <p className="text-xs text-gray-400 mt-1">
+                      Debug: {user.role} - {user.hallName || 'No hall name'}
+                    </p>
+                  )}
                 </div>
                 <button
                   className="md:hidden p-2 rounded-md hover:bg-gray-100"
@@ -389,7 +409,7 @@ export default function Layout({ children, currentPageName }) {
                 </button>
               </div>
             </div>
-            <nav className="p-4">
+            <nav className="p-4 flex-1">
               <ul className="space-y-1">
                 {navigationItems.map((item) => {
                   // Hide Users menu item for hall owners
@@ -436,6 +456,32 @@ export default function Layout({ children, currentPageName }) {
                 })}
               </ul>
             </nav>
+            
+            {/* User Info and Logout Section */}
+            {user && (
+              <div className="border-t border-gray-200 p-4 mt-auto">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-2">
+                    <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
+                      <Shield className="w-4 h-4 text-blue-600" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-gray-900">
+                        {user.role === 'super_admin' ? 'Super Admin' : 'Hall Owner'}
+                      </p>
+                      <p className="text-xs text-gray-500">Logged in</p>
+                    </div>
+                  </div>
+                </div>
+                <button
+                  onClick={handleLogout}
+                  className="w-full flex items-center gap-2 px-3 py-2 text-sm text-red-600 hover:bg-red-50 rounded-md transition-colors"
+                >
+                  <LogOut className="w-4 h-4" />
+                  Logout
+                </button>
+              </div>
+            )}
           </aside>
         </>
       )}
@@ -457,6 +503,37 @@ export default function Layout({ children, currentPageName }) {
           {children}
         </div>
       </main>
+
+      {/* Logout Confirmation Dialog */}
+      {showLogoutConfirm && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-sm w-full mx-4">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 bg-red-100 rounded-full flex items-center justify-center">
+                <LogOut className="w-5 h-5 text-red-600" />
+              </div>
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900">Logout</h3>
+                <p className="text-sm text-gray-500">Are you sure you want to logout?</p>
+              </div>
+            </div>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowLogoutConfirm(false)}
+                className="flex-1 px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-md transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmLogout}
+                className="flex-1 px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-md transition-colors"
+              >
+                Logout
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 
