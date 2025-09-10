@@ -52,6 +52,7 @@ const navigationItems = [
   title: "Resources",
   icon: Building2,
   children: [
+  { title: "My Resources", url: createPageUrl("Resources") },
   { title: "Halls/Rooms", url: createPageUrl("ResourcesHalls") },
   { title: "Public Holidays", url: createPageUrl("ResourcesHolidays") },
   { title: "Block-outs", url: createPageUrl("ResourcesBlockouts") }]
@@ -119,7 +120,7 @@ export default function Layout({ children, currentPageName }) {
   const [expandedItems, setExpandedItems] = useState(new Set());
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
-  const { isSuperAdmin, logout, user } = useAuth();
+  const { isSuperAdmin, isHallOwner, logout, user } = useAuth();
 
   // Auto-expand parent menu if child route is active
   useEffect(() => {
@@ -425,16 +426,27 @@ export default function Layout({ children, currentPageName }) {
                             <span>{item.title}</span>
                           </summary>
                           <ul className="nav-children">
-                            {item.children.map((child) =>
-                              <li key={child.title}>
-                                <Link
-                                  to={child.url}
-                                  className={`nav-child-link ${isActiveRoute(child.url) ? 'active' : ''}`}
-                                  onClick={closeMobileMenu}>
-                                  {child.title}
-                                </Link>
-                              </li>
-                            )}
+                            {item.children.map((child) => {
+                              // Show "My Resources" only to hall owners
+                              if (child.title === "My Resources" && !isHallOwner()) {
+                                return null;
+                              }
+                              // Hide other resource items from hall owners
+                              if (item.title === "Resources" && child.title !== "My Resources" && isHallOwner()) {
+                                return null;
+                              }
+                              
+                              return (
+                                <li key={child.title}>
+                                  <Link
+                                    to={child.url}
+                                    className={`nav-child-link ${isActiveRoute(child.url) ? 'active' : ''}`}
+                                    onClick={closeMobileMenu}>
+                                    {child.title}
+                                  </Link>
+                                </li>
+                              );
+                            })}
                           </ul>
                         </details> :
                         <Link
