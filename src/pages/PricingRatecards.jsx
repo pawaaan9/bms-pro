@@ -371,68 +371,6 @@ export default function PricingRatecards() {
         </div>
       )}
 
-      {/* Statistics Box */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card className="bg-gradient-to-r from-blue-50 to-blue-100 border-blue-200">
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-blue-600">Total Pricing</p>
-                <p className="text-2xl font-bold text-blue-900">{pricing.length}</p>
-              </div>
-              <div className="p-2 bg-blue-500 rounded-lg">
-                <DollarSign className="h-5 w-5 text-white" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="bg-gradient-to-r from-green-50 to-green-100 border-green-200">
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-green-600">Hourly Rates</p>
-                <p className="text-2xl font-bold text-green-900">
-                  {pricing.filter(p => p.rateType === 'hourly').length}
-                </p>
-              </div>
-              <div className="p-2 bg-green-500 rounded-lg">
-                <Clock className="h-5 w-5 text-white" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="bg-gradient-to-r from-purple-50 to-purple-100 border-purple-200">
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-purple-600">Daily Rates</p>
-                <p className="text-2xl font-bold text-purple-900">
-                  {pricing.filter(p => p.rateType === 'daily').length}
-                </p>
-              </div>
-              <div className="p-2 bg-purple-500 rounded-lg">
-                <Calendar className="h-5 w-5 text-white" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="bg-gradient-to-r from-orange-50 to-orange-100 border-orange-200">
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-orange-600">Resources</p>
-                <p className="text-2xl font-bold text-orange-900">{resources.length}</p>
-              </div>
-              <div className="p-2 bg-orange-500 rounded-lg">
-                <Building2 className="h-5 w-5 text-white" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
 
       {/* Search Section */}
       <Card>
@@ -451,119 +389,144 @@ export default function PricingRatecards() {
         </CardContent>
       </Card>
 
-      {/* Resources Table */}
-      <Card>
-        <CardContent className="p-0">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Resource</TableHead>
-                <TableHead>Type</TableHead>
-                <TableHead>Rate Type</TableHead>
-                <TableHead className="text-right">Weekday Rate</TableHead>
-                <TableHead className="text-right">Weekend Rate</TableHead>
-                <TableHead>Description</TableHead>
-                <TableHead className="w-24">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filtered.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={7} className="text-center py-8">
-                    <div className="flex flex-col items-center gap-2">
-                      <DollarSign className="h-8 w-8 text-muted-foreground" />
-                      <p className="text-muted-foreground">
-                        {search ? 'No pricing found matching your search.' : 'No pricing found.'}
-                      </p>
-                      {!search && resources.length > 0 && (
-                        <Button onClick={handleAddPricing} className="mt-2">
-                          <Plus className="h-4 w-4 mr-2" />
-                          Add Your First Pricing
-                        </Button>
-                      )}
-                      {!search && resources.length === 0 && (
-                        <p className="text-sm text-muted-foreground mt-2">
-                          Please add resources first before setting up pricing.
-                        </p>
-                      )}
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ) : (
-                filtered.map(item => {
-                  const resource = resources.find(r => r.id === item.resourceId);
-                  return (
-                    <TableRow key={item.id} className="hover:bg-muted/50">
-                      <TableCell className="font-medium">
-                        <div className="flex items-center gap-2">
-                          {resource && getTypeIcon(resource.type)}
+      {/* Creative Pricing Cards */}
+      {filtered.length === 0 ? (
+        <Card>
+          <CardContent className="p-8">
+            <div className="flex flex-col items-center gap-4 text-center">
+              <div className="p-4 bg-muted rounded-full">
+                <DollarSign className="h-12 w-12 text-muted-foreground" />
+              </div>
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                  {search ? 'No pricing found' : 'No pricing set up yet'}
+                </h3>
+                <p className="text-muted-foreground mb-4">
+                  {search 
+                    ? 'Try adjusting your search terms to find what you\'re looking for.'
+                    : 'Start by adding pricing for your resources to manage rates effectively.'
+                  }
+                </p>
+                {!search && resources.length > 0 && (
+                  <Button onClick={handleAddPricing} className="gap-2">
+                    <Plus className="h-4 w-4" />
+                    Add Your First Pricing
+                  </Button>
+                )}
+                {!search && resources.length === 0 && (
+                  <p className="text-sm text-muted-foreground">
+                    Please add resources first before setting up pricing.
+                  </p>
+                )}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      ) : (
+        <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
+          {filtered.map(item => {
+            const resource = resources.find(r => r.id === item.resourceId);
+            const isHourly = item.rateType === 'hourly';
+            
+            return (
+              <Card key={item.id} className="group hover:shadow-lg transition-all duration-300 border-2 hover:border-primary/20">
+                <CardContent className="p-6">
+                  {/* Header */}
+                  <div className="flex items-start justify-between mb-4">
+                    <div className="flex items-center gap-3">
+                      <div className={`p-2 rounded-lg ${isHourly ? 'bg-blue-100' : 'bg-green-100'}`}>
+                        {resource && getTypeIcon(resource.type)}
+                      </div>
+                      <div>
+                        <h3 className="font-semibold text-lg text-gray-900 group-hover:text-primary transition-colors">
                           {item.resourceName}
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        {resource ? (
-                          <Badge variant={getTypeBadgeVariant(resource.type)}>
+                        </h3>
+                        {resource && (
+                          <Badge variant={getTypeBadgeVariant(resource.type)} className="mt-1">
                             {resource.type.charAt(0).toUpperCase() + resource.type.slice(1)}
                           </Badge>
-                        ) : (
-                          <span className="text-muted-foreground">N/A</span>
                         )}
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant={getRateTypeBadgeVariant(item.rateType)}>
-                          <div className="flex items-center gap-1">
-                            {getRateTypeIcon(item.rateType)}
-                            {item.rateType}
-                          </div>
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex items-center justify-end gap-1">
-                          <DollarSign className="h-4 w-4 text-muted-foreground" />
-                          <span className="font-mono">{item.weekdayRate.toFixed(2)}</span>
-                        </div>
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex items-center justify-end gap-1">
-                          <DollarSign className="h-4 w-4 text-muted-foreground" />
-                          <span className="font-mono">{item.weekendRate.toFixed(2)}</span>
-                        </div>
-                      </TableCell>
-                      <TableCell className="max-w-xs truncate">
-                        <span className="text-sm text-muted-foreground">
-                          {item.description || 'No description'}
-                        </span>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-1">
-                          <Button 
-                            variant="ghost" 
-                            size="sm" 
-                            className="h-8 w-8 p-0"
-                            onClick={() => handleEditPricing(item)}
-                          >
-                            <Edit className="h-4 w-4" />
-                            <span className="sr-only">Edit</span>
-                          </Button>
-                          <Button 
-                            variant="ghost" 
-                            size="sm" 
-                            className="h-8 w-8 p-0 text-red-600 hover:text-red-700"
-                            onClick={() => handleDeletePricing(item)}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                            <span className="sr-only">Delete</span>
-                          </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  );
-                })
-              )}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
+                      </div>
+                    </div>
+                    <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        className="h-8 px-3 text-xs"
+                        onClick={() => handleEditPricing(item)}
+                      >
+                        <Edit className="h-3 w-3 mr-1" />
+                        Edit
+                      </Button>
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        className="h-8 px-3 text-xs text-red-600 hover:text-red-700 hover:bg-red-50"
+                        onClick={() => handleDeletePricing(item)}
+                      >
+                        <Trash2 className="h-3 w-3 mr-1" />
+                        Delete
+                      </Button>
+                    </div>
+                  </div>
+
+                  {/* Rate Type Badge */}
+                  <div className="mb-4">
+                    <Badge variant={getRateTypeBadgeVariant(item.rateType)} className="gap-1">
+                      {getRateTypeIcon(item.rateType)}
+                      {item.rateType.charAt(0).toUpperCase() + item.rateType.slice(1)} Rate
+                    </Badge>
+                  </div>
+
+                  {/* Pricing Display */}
+                  <div className="space-y-3 mb-4">
+                    <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
+                      <div className="flex items-center gap-2">
+                        <Calendar className="h-4 w-4 text-muted-foreground" />
+                        <span className="text-sm font-medium text-gray-600">Weekday</span>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <DollarSign className="h-4 w-4 text-green-600" />
+                        <span className="font-bold text-lg text-gray-900">{item.weekdayRate.toFixed(2)}</span>
+                      </div>
+                    </div>
+                    
+                    <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
+                      <div className="flex items-center gap-2">
+                        <Calendar className="h-4 w-4 text-muted-foreground" />
+                        <span className="text-sm font-medium text-gray-600">Weekend</span>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <DollarSign className="h-4 w-4 text-orange-600" />
+                        <span className="font-bold text-lg text-gray-900">{item.weekendRate.toFixed(2)}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Description */}
+                  {item.description && (
+                    <div className="pt-3 border-t">
+                      <p className="text-sm text-muted-foreground line-clamp-2">
+                        {item.description}
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Resource Info */}
+                  {resource && (
+                    <div className="pt-3 border-t">
+                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                        <Users className="h-3 w-3" />
+                        <span>Capacity: {resource.capacity} people</span>
+                      </div>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
+      )}
 
       {/* Add Pricing Modal */}
       <Dialog open={showAddModal} onOpenChange={setShowAddModal}>
