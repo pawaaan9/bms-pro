@@ -24,6 +24,7 @@ export default function Users() {
     password: '',
     role: 'hall_owner',
     hallName: '',
+    contactNumber: '',
     address: {
       line1: '',
       line2: '',
@@ -66,6 +67,7 @@ export default function Users() {
         (u.email || '').toLowerCase().includes(search.toLowerCase()) ||
         (u.role || '').toLowerCase().includes(search.toLowerCase()) ||
         (u.hallName || '').toLowerCase().includes(search.toLowerCase()) ||
+        (u.contactNumber || '').toLowerCase().includes(search.toLowerCase()) ||
         (u.address?.line1 || '').toLowerCase().includes(search.toLowerCase()) ||
         (u.address?.line2 || '').toLowerCase().includes(search.toLowerCase()) ||
         (u.address?.postcode || '').toLowerCase().includes(search.toLowerCase()) ||
@@ -151,6 +153,7 @@ export default function Users() {
       // Add hall-specific data for hall owners
       if (editingUser.role === 'hall_owner') {
         userData.hallName = editingUser.hallName;
+        userData.contactNumber = editingUser.contactNumber;
         userData.address = editingUser.address;
       }
 
@@ -217,6 +220,7 @@ export default function Users() {
       // Add hall-specific data for hall owners
       if (newUser.role === 'hall_owner') {
         userData.hallName = newUser.hallName;
+        userData.contactNumber = newUser.contactNumber;
         userData.address = newUser.address;
       }
 
@@ -244,6 +248,7 @@ export default function Users() {
           password: '',
           role: 'hall_owner',
           hallName: '',
+          contactNumber: '',
           address: {
             line1: '',
             line2: '',
@@ -436,6 +441,7 @@ export default function Users() {
                 <TableHead>Email</TableHead>
                 <TableHead>Role</TableHead>
                 <TableHead>Hall Name</TableHead>
+                <TableHead>Contact Number</TableHead>
                 <TableHead>Address</TableHead>
                 <TableHead className="w-24">Actions</TableHead>
               </TableRow>
@@ -443,7 +449,7 @@ export default function Users() {
             <TableBody>
               {filtered.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center py-8">
+                  <TableCell colSpan={7} className="text-center py-8">
                     <div className="flex flex-col items-center gap-2">
                       <UsersIcon className="h-8 w-8 text-muted-foreground" />
                       <p className="text-muted-foreground">No users found.</p>
@@ -469,6 +475,11 @@ export default function Users() {
                     <TableCell>
                       {user.hallName ? (
                         <span className="font-medium">{user.hallName}</span>
+                      ) : '-'}
+                    </TableCell>
+                    <TableCell>
+                      {user.contactNumber ? (
+                        <span className="font-medium">{user.contactNumber}</span>
                       ) : '-'}
                     </TableCell>
                     <TableCell>
@@ -674,6 +685,24 @@ export default function Users() {
                         onChange={(e) => handleInputChange('hallName', e.target.value)}
                         className="pl-9 h-9 text-sm"
                         placeholder="Enter hall name"
+                        required
+                      />
+                    </div>
+                  </div>
+
+                  <div className="relative">
+                    <Label htmlFor="contactNumber" className="text-xs font-medium text-gray-700 mb-1 block">
+                      Contact Number *
+                    </Label>
+                    <div className="relative">
+                      <User className="absolute left-2.5 top-1/2 transform -translate-y-1/2 h-3.5 w-3.5 text-gray-400" />
+                      <Input
+                        id="contactNumber"
+                        type="tel"
+                        value={newUser.contactNumber}
+                        onChange={(e) => handleInputChange('contactNumber', e.target.value)}
+                        className="pl-9 h-9 text-sm"
+                        placeholder="Enter contact number"
                         required
                       />
                     </div>
@@ -916,6 +945,24 @@ export default function Users() {
                           onChange={(e) => setEditingUser(prev => ({ ...prev, hallName: e.target.value }))}
                           className="pl-9 h-9 text-sm"
                           placeholder="Enter hall name"
+                          required
+                        />
+                      </div>
+                    </div>
+
+                    <div className="relative">
+                      <Label htmlFor="editContactNumber" className="text-xs font-medium text-gray-700 mb-1 block">
+                        Contact Number *
+                      </Label>
+                      <div className="relative">
+                        <User className="absolute left-2.5 top-1/2 transform -translate-y-1/2 h-3.5 w-3.5 text-gray-400" />
+                        <Input
+                          id="editContactNumber"
+                          type="tel"
+                          value={editingUser.contactNumber || ''}
+                          onChange={(e) => setEditingUser(prev => ({ ...prev, contactNumber: e.target.value }))}
+                          className="pl-9 h-9 text-sm"
+                          placeholder="Enter contact number"
                           required
                         />
                       </div>
