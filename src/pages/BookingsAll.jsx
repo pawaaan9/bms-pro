@@ -53,7 +53,7 @@ const transformBookingData = (backendBooking) => {
     resource: backendBooking.hallName || backendBooking.selectedHall,
     start: startDateTime,
     end: endDateTime,
-    status: backendBooking.status?.toUpperCase() || 'PENDING',
+    status: backendBooking.status || 'pending',
     balance: backendBooking.calculatedPrice || 0,
     totalValue: backendBooking.calculatedPrice || 0,
     guests: backendBooking.guestCount || 0,

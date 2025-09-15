@@ -41,6 +41,12 @@ import {
 
 const StatusBadge = ({ status }) => {
   const statusMap = {
+    // Backend statuses (lowercase)
+    pending: { color: 'orange', icon: <Clock className="h-3 w-3" />, text: 'Pending' },
+    confirmed: { color: 'green', icon: <CheckCircle className="h-3 w-3" />, text: 'Confirmed' },
+    completed: { color: 'blue', icon: <Star className="h-3 w-3" />, text: 'Completed' },
+    cancelled: { color: 'red', icon: <XCircle className="h-3 w-3" />, text: 'Cancelled' },
+    // Legacy uppercase versions (for backward compatibility)
     PENDING_REVIEW: { color: 'orange', icon: <Clock className="h-3 w-3" />, text: 'Pending Review' },
     TENTATIVE: { color: 'yellow', icon: <AlertTriangle className="h-3 w-3" />, text: 'Tentative' },
     CONFIRMED: { color: 'green', icon: <CheckCircle className="h-3 w-3" />, text: 'Confirmed' },
