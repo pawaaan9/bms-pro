@@ -33,6 +33,8 @@ import SmartFilters from '../components/bookings/SmartFilters';
 import BookingDetailPaneAdvanced from '../components/bookings/BookingDetailPaneAdvanced';
 import QuickStats from '../components/bookings/QuickStats';
 import CommandPalette from '../components/bookings/CommandPalette';
+import ConfirmationModal from '../components/ui/ConfirmationModal';
+import ToastNotification from '../components/ui/ToastNotification';
 import { format, subDays, addDays, isToday, isTomorrow, isYesterday } from 'date-fns';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -89,6 +91,22 @@ export default function BookingsAll() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [refreshing, setRefreshing] = useState(false);
+  const [confirmationModal, setConfirmationModal] = useState({
+    isOpen: false,
+    type: 'confirm',
+    title: '',
+    message: '',
+    confirmText: 'Confirm',
+    cancelText: 'Cancel',
+    bookingDetails: null,
+    onConfirm: null
+  });
+  const [toast, setToast] = useState({
+    isVisible: false,
+    type: 'success',
+    title: '',
+    message: ''
+  });
   
   // Advanced filter states
   const [filters, setFilters] = useState({
@@ -405,6 +423,186 @@ export default function BookingsAll() {
     setSelectedRows(new Set());
   }, [selectedRows]);
 
+  // Handle confirm order action
+  const handleConfirmOrder = useCallback((bookingId) => {
+    // Find the booking to get customer name for confirmation
+    const booking = bookings.find(b => b.id === bookingId);
+    if (!booking) {
+      console.error('Booking not found:', bookingId);
+      return;
+    }
+
+    // Show beautiful confirmation modal
+    setConfirmationModal({
+      isOpen: true,
+      type: 'confirm',
+      title: 'Confirm Booking',
+      message: `Are you sure you want to confirm the booking for ${booking.customer.name}?`,
+      confirmText: 'Confirm Order',
+      cancelText: 'Cancel',
+      bookingDetails: {
+        customerName: booking.customer.name,
+        purpose: booking.purpose,
+        start: booking.start,
+        end: booking.end,
+        totalValue: booking.totalValue
+      },
+      onConfirm: async () => {
+        try {
+          const token = localStorage.getItem('token');
+          if (!token) {
+            throw new Error('No authentication token found');
+          }
+
+          console.log('Confirming order for booking:', bookingId);
+          
+          const response = await fetch(`http://localhost:5000/api/bookings/${bookingId}/status`, {
+            method: 'PUT',
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ status: 'confirmed' })
+          });
+
+          if (!response.ok) {
+            const errorData = await response.json().catch(() => ({ message: 'Unknown error' }));
+            throw new Error(`Failed to confirm booking: ${response.status} ${response.statusText} - ${errorData.message || 'Unknown error'}`);
+          }
+
+          const result = await response.json();
+          console.log('Booking confirmed successfully:', result);
+
+          // Update local state optimistically
+          setBookings(prevBookings => 
+            prevBookings.map(booking => 
+              booking.id === bookingId 
+                ? { ...booking, status: 'confirmed' }
+                : booking
+            )
+          );
+
+          // Update filtered bookings as well
+          setFilteredBookings(prevFilteredBookings => 
+            prevFilteredBookings.map(booking => 
+              booking.id === bookingId 
+                ? { ...booking, status: 'confirmed' }
+                : booking
+            )
+          );
+
+          // Close modal and show success
+          setConfirmationModal(prev => ({ ...prev, isOpen: false }));
+          setToast({
+            isVisible: true,
+            type: 'success',
+            title: 'Booking Confirmed!',
+            message: `${booking.customer.name}'s booking is now confirmed.`
+          });
+          
+        } catch (err) {
+          console.error('Error confirming booking:', err);
+          setToast({
+            isVisible: true,
+            type: 'error',
+            title: 'Error Confirming Booking',
+            message: err.message
+          });
+        }
+      }
+    });
+  }, [bookings]);
+
+  // Handle cancel order action
+  const handleCancelOrder = useCallback((bookingId) => {
+    // Find the booking to get customer name for confirmation
+    const booking = bookings.find(b => b.id === bookingId);
+    if (!booking) {
+      console.error('Booking not found:', bookingId);
+      return;
+    }
+
+    // Show beautiful confirmation modal
+    setConfirmationModal({
+      isOpen: true,
+      type: 'cancel',
+      title: 'Cancel Booking',
+      message: `Are you sure you want to cancel the booking for ${booking.customer.name}?`,
+      confirmText: 'Cancel Order',
+      cancelText: 'Keep Booking',
+      bookingDetails: {
+        customerName: booking.customer.name,
+        purpose: booking.purpose,
+        start: booking.start,
+        end: booking.end,
+        totalValue: booking.totalValue
+      },
+      onConfirm: async () => {
+        try {
+          const token = localStorage.getItem('token');
+          if (!token) {
+            throw new Error('No authentication token found');
+          }
+
+          console.log('Cancelling order for booking:', bookingId);
+          
+          const response = await fetch(`http://localhost:5000/api/bookings/${bookingId}/status`, {
+            method: 'PUT',
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ status: 'cancelled' })
+          });
+
+          if (!response.ok) {
+            const errorData = await response.json().catch(() => ({ message: 'Unknown error' }));
+            throw new Error(`Failed to cancel booking: ${response.status} ${response.statusText} - ${errorData.message || 'Unknown error'}`);
+          }
+
+          const result = await response.json();
+          console.log('Booking cancelled successfully:', result);
+
+          // Update local state optimistically
+          setBookings(prevBookings => 
+            prevBookings.map(booking => 
+              booking.id === bookingId 
+                ? { ...booking, status: 'cancelled' }
+                : booking
+            )
+          );
+
+          // Update filtered bookings as well
+          setFilteredBookings(prevFilteredBookings => 
+            prevFilteredBookings.map(booking => 
+              booking.id === bookingId 
+                ? { ...booking, status: 'cancelled' }
+                : booking
+            )
+          );
+
+          // Close modal and show success
+          setConfirmationModal(prev => ({ ...prev, isOpen: false }));
+          setToast({
+            isVisible: true,
+            type: 'success',
+            title: 'Booking Cancelled!',
+            message: `${booking.customer.name}'s booking has been cancelled.`
+          });
+          
+        } catch (err) {
+          console.error('Error cancelling booking:', err);
+          setToast({
+            isVisible: true,
+            type: 'error',
+            title: 'Error Cancelling Booking',
+            message: err.message
+          });
+        }
+      }
+    });
+  }, [bookings]);
+
   const handleExport = useCallback(() => {
     const dataToExport = selectedRows.size > 0 
       ? filteredBookings.filter(b => selectedRows.has(b.id))
@@ -613,6 +811,8 @@ export default function BookingsAll() {
                 onSortChange={setSortConfig}
                 onRowClick={handleRowClick}
                 onBulkAction={handleBulkAction}
+                onConfirmOrder={handleConfirmOrder}
+                onCancelOrder={handleCancelOrder}
                 ref={tableRef}
               />
             )}
@@ -639,6 +839,28 @@ export default function BookingsAll() {
           bookings={filteredBookings}
           onSelectBooking={handleRowClick}
           onApplyFilter={setFilters}
+        />
+
+        {/* Beautiful Confirmation Modal */}
+        <ConfirmationModal
+          isOpen={confirmationModal.isOpen}
+          onClose={() => setConfirmationModal(prev => ({ ...prev, isOpen: false }))}
+          onConfirm={confirmationModal.onConfirm}
+          title={confirmationModal.title}
+          message={confirmationModal.message}
+          confirmText={confirmationModal.confirmText}
+          cancelText={confirmationModal.cancelText}
+          type={confirmationModal.type}
+          bookingDetails={confirmationModal.bookingDetails}
+        />
+
+        {/* Toast Notifications */}
+        <ToastNotification
+          isVisible={toast.isVisible}
+          onClose={() => setToast(prev => ({ ...prev, isVisible: false }))}
+          type={toast.type}
+          title={toast.title}
+          message={toast.message}
         />
       </div>
     </TooltipProvider>

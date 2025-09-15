@@ -31,6 +31,8 @@ import {
   Clock,
   Star,
   Users,
+  Check,
+  X,
 } from 'lucide-react';
 import {
     DropdownMenu,
@@ -81,7 +83,9 @@ const BookingsTableAdvanced = React.forwardRef(({
   sortConfig,
   onSortChange,
   onRowClick,
-  onBulkAction
+  onBulkAction,
+  onConfirmOrder,
+  onCancelOrder
 }, ref) => {
 
   const handleSelectAll = (checked) => {
@@ -212,10 +216,34 @@ const BookingsTableAdvanced = React.forwardRef(({
                             </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
-                            <DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => onRowClick(booking)}>
                                 <Eye className="mr-2 h-4 w-4" />
                                 View Details
                             </DropdownMenuItem>
+                            {booking.status === 'pending' && (
+                                <>
+                                    <DropdownMenuItem 
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            onConfirmOrder(booking.id);
+                                        }}
+                                        className="text-green-600 focus:text-green-600"
+                                    >
+                                        <Check className="mr-2 h-4 w-4" />
+                                        Confirm Order
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem 
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            onCancelOrder(booking.id);
+                                        }}
+                                        className="text-red-600 focus:text-red-600"
+                                    >
+                                        <X className="mr-2 h-4 w-4" />
+                                        Cancel Order
+                                    </DropdownMenuItem>
+                                </>
+                            )}
                             <DropdownMenuItem>
                                 <Edit className="mr-2 h-4 w-4" />
                                 Edit
