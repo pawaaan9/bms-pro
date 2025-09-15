@@ -25,6 +25,7 @@ import {
   CheckCircle,
   Keyboard,
   Sparkles,
+  RefreshCw,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import BookingsTableAdvanced from '../components/bookings/BookingsTableAdvanced';
@@ -33,75 +34,51 @@ import BookingDetailPaneAdvanced from '../components/bookings/BookingDetailPaneA
 import QuickStats from '../components/bookings/QuickStats';
 import CommandPalette from '../components/bookings/CommandPalette';
 import { format, subDays, addDays, isToday, isTomorrow, isYesterday } from 'date-fns';
+import { useAuth } from '../contexts/AuthContext';
 
-// Enhanced sample data with realistic business scenarios
-const generateRealisticBookings = () => {
-  const statuses = ['PENDING_REVIEW', 'TENTATIVE', 'CONFIRMED', 'COMPLETED', 'CANCELLED'];
-  const resources = ['Hall A', 'Hall B', 'Main Hall', 'Conference Room', 'Studio Space'];
-  const purposes = [
-    'Wedding Reception', 'Corporate Training', 'Birthday Party', 'Art Exhibition',
-    'Dance Recital', 'Community Meeting', 'Graduation Ceremony', 'Product Launch',
-    'Fitness Class', 'Music Concert', 'Theatre Performance', 'Workshop',
-  ];
+// Transform backend booking data to match frontend format
+const transformBookingData = (backendBooking) => {
+  const startDateTime = new Date(`${backendBooking.bookingDate}T${backendBooking.startTime}:00`);
+  const endDateTime = new Date(`${backendBooking.bookingDate}T${backendBooking.endTime}:00`);
   
-  const customers = [
-    { name: 'Sarah Chen', email: 'sarah.chen@email.com', tier: 'premium' },
-    { name: 'Michael Rodriguez', email: 'm.rodriguez@corp.com', tier: 'business' },
-    { name: 'Emma Thompson', email: 'emma.t@events.com', tier: 'premium' },
-    { name: 'David Kim', email: 'david.kim@startup.io', tier: 'standard' },
-    { name: 'Lisa Johnson', email: 'lisa.j@community.org', tier: 'nonprofit' },
-    { name: 'James Wilson', email: 'james.wilson@gmail.com', tier: 'standard' },
-    { name: 'Maria Garcia', email: 'maria.garcia@dance.com', tier: 'business' },
-    { name: 'Robert Lee', email: 'robert.lee@tech.com', tier: 'premium' },
-  ];
-
-  return Array.from({ length: 47 }, (_, i) => {
-    const customer = customers[i % customers.length];
-    const baseDate = subDays(new Date(), Math.random() * 60 - 30); // ±30 days
-    const startHour = Math.floor(Math.random() * 16) + 8; // 8 AM to 11 PM
-    const duration = [2, 3, 4, 5, 6][Math.floor(Math.random() * 5)]; // 2-6 hours
-    
-    const start = new Date(baseDate);
-    start.setHours(startHour, 0, 0, 0);
-    
-    const end = new Date(start);
-    end.setHours(startHour + duration);
-    
-    const status = statuses[Math.floor(Math.random() * statuses.length)];
-    const guests = Math.floor(Math.random() * 200) + 20;
-    const basePrice = guests * (Math.random() * 15 + 10); // $10-25 per guest
-    const balance = status === 'COMPLETED' ? 0 : Math.floor(basePrice * Math.random());
-    
-    return {
-      id: `BKG-${2000 + i}`,
-      customer: {
-        ...customer,
-        bookingHistory: Math.floor(Math.random() * 10) + 1,
-        totalSpent: Math.floor(Math.random() * 50000) + 5000,
-      },
-      resource: resources[Math.floor(Math.random() * resources.length)],
-      start,
-      end,
-      status,
-      balance,
-      totalValue: Math.floor(basePrice),
-      guests,
-      purpose: purposes[Math.floor(Math.random() * purposes.length)],
-      priority: Math.random() > 0.8 ? 'high' : Math.random() > 0.6 ? 'medium' : 'normal',
-      tags: Math.random() > 0.7 ? ['VIP'] : Math.random() > 0.8 ? ['Recurring'] : [],
-      notes: Math.random() > 0.6 ? 'Special requirements discussed' : '',
-      createdAt: new Date(baseDate.getTime() - Math.random() * 7 * 24 * 60 * 60 * 1000),
-      lastModified: new Date(),
-      assignedTo: ['Sarah Admin', 'Mike Manager', 'Lisa Coordinator'][Math.floor(Math.random() * 3)],
-      riskLevel: Math.random() > 0.9 ? 'high' : Math.random() > 0.7 ? 'medium' : 'low',
-    };
-  }).sort((a, b) => b.start - a.start);
+  return {
+    id: backendBooking.id,
+    customer: {
+      name: backendBooking.customerName,
+      email: backendBooking.customerEmail,
+      tier: 'standard', // Default tier, could be enhanced later
+      bookingHistory: 1, // Default, could be calculated from history
+      totalSpent: backendBooking.calculatedPrice || 0,
+    },
+    resource: backendBooking.hallName || backendBooking.selectedHall,
+    start: startDateTime,
+    end: endDateTime,
+    status: backendBooking.status?.toUpperCase() || 'PENDING',
+    balance: backendBooking.calculatedPrice || 0,
+    totalValue: backendBooking.calculatedPrice || 0,
+    guests: backendBooking.guestCount || 0,
+    purpose: backendBooking.eventType || 'Event',
+    priority: 'normal', // Default priority
+    tags: [],
+    notes: backendBooking.additionalDescription || '',
+    createdAt: backendBooking.createdAt ? new Date(backendBooking.createdAt) : new Date(),
+    lastModified: backendBooking.updatedAt ? new Date(backendBooking.updatedAt) : new Date(),
+    assignedTo: 'Admin', // Default assignment
+    riskLevel: 'low', // Default risk level
+    // Additional backend fields
+    customerPhone: backendBooking.customerPhone,
+    customerAvatar: backendBooking.customerAvatar,
+    bookingSource: backendBooking.bookingSource,
+    priceDetails: backendBooking.priceDetails,
+  };
 };
 
 export default function BookingsAll() {
+  const { user } = useAuth();
+  
   // State management with performance optimization
-  const [bookings] = useState(() => generateRealisticBookings());
-  const [filteredBookings, setFilteredBookings] = useState(bookings);
+  const [bookings, setBookings] = useState([]);
+  const [filteredBookings, setFilteredBookings] = useState([]);
   const [selectedBooking, setSelectedBooking] = useState(null);
   const [selectedRows, setSelectedRows] = useState(new Set());
   const [searchTerm, setSearchTerm] = useState('');
@@ -109,6 +86,9 @@ export default function BookingsAll() {
   const [isDetailPaneOpen, setIsDetailPaneOpen] = useState(false);
   const [viewMode, setViewMode] = useState('table'); // table, cards, timeline
   const [showCommandPalette, setShowCommandPalette] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [refreshing, setRefreshing] = useState(false);
   
   // Advanced filter states
   const [filters, setFilters] = useState({
@@ -126,6 +106,66 @@ export default function BookingsAll() {
   // Performance refs
   const searchTimeoutRef = useRef(null);
   const tableRef = useRef(null);
+
+  // Fetch bookings from backend
+  const fetchBookings = useCallback(async (isRefresh = false) => {
+    if (!user?.id) {
+      console.log('No user ID available:', user);
+      return;
+    }
+    
+    try {
+      if (isRefresh) {
+        setRefreshing(true);
+      } else {
+        setLoading(true);
+      }
+      setError(null);
+
+      const token = localStorage.getItem('token');
+      if (!token) {
+        throw new Error('No authentication token found');
+      }
+
+      console.log('Fetching bookings for user ID:', user.id);
+      console.log('User object:', user);
+      
+      const response = await fetch(`http://localhost:5000/api/bookings/hall-owner/${user.id}`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ message: 'Unknown error' }));
+        console.error('Backend error response:', errorData);
+        throw new Error(`Failed to fetch bookings: ${response.status} ${response.statusText} - ${errorData.message || 'Unknown error'}`);
+      }
+
+      const backendBookings = await response.json();
+      console.log('Received bookings from backend:', backendBookings);
+      const transformedBookings = backendBookings.map(transformBookingData);
+      
+      setBookings(transformedBookings);
+      setFilteredBookings(transformedBookings);
+      
+    } catch (err) {
+      console.error('Error fetching bookings:', err);
+      setError(err.message);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  }, [user]);
+
+  // Fetch bookings on component mount and when user changes
+  useEffect(() => {
+    if (user?.id) {
+      fetchBookings();
+    }
+  }, [user?.id, fetchBookings]);
 
   // Memoized computations for performance
   const quickStats = useMemo(() => {
@@ -461,6 +501,21 @@ export default function BookingsAll() {
               <div className="flex gap-2">
                 <Tooltip>
                   <TooltipTrigger asChild>
+                    <Button 
+                      variant="outline" 
+                      onClick={() => fetchBookings(true)}
+                      disabled={refreshing}
+                      className="relative overflow-hidden group"
+                    >
+                      <RefreshCw className={`mr-2 h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
+                      {refreshing ? 'Refreshing...' : 'Refresh'}
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>Refresh bookings data</TooltipContent>
+                </Tooltip>
+                
+                <Tooltip>
+                  <TooltipTrigger asChild>
                     <Button variant="outline" onClick={handleExport} className="relative overflow-hidden group">
                       <Download className="mr-2 h-4 w-4" />
                       Export CSV
@@ -519,16 +574,48 @@ export default function BookingsAll() {
 
           {/* Revolutionary Table */}
           <Card className="flex-1 shadow-xl border-0 overflow-hidden">
-            <BookingsTableAdvanced
-              bookings={filteredBookings}
-              selectedRows={selectedRows}
-              onSelectedRowsChange={setSelectedRows}
-              sortConfig={sortConfig}
-              onSortChange={setSortConfig}
-              onRowClick={handleRowClick}
-              onBulkAction={handleBulkAction}
-              ref={tableRef}
-            />
+            {loading ? (
+              <div className="flex items-center justify-center h-64">
+                <div className="text-center">
+                  <RefreshCw className="h-8 w-8 animate-spin mx-auto mb-4 text-blue-500" />
+                  <p className="text-gray-600">Loading bookings...</p>
+                </div>
+              </div>
+            ) : error ? (
+              <div className="flex items-center justify-center h-64">
+                <div className="text-center">
+                  <AlertTriangle className="h-8 w-8 mx-auto mb-4 text-red-500" />
+                  <p className="text-red-600 mb-4">{error}</p>
+                  <Button onClick={() => fetchBookings()} variant="outline">
+                    <RefreshCw className="mr-2 h-4 w-4" />
+                    Try Again
+                  </Button>
+                </div>
+              </div>
+            ) : filteredBookings.length === 0 ? (
+              <div className="flex items-center justify-center h-64">
+                <div className="text-center">
+                  <Calendar className="h-8 w-8 mx-auto mb-4 text-gray-400" />
+                  <p className="text-gray-600 mb-4">No bookings found</p>
+                  <p className="text-sm text-gray-500">
+                    {searchTerm || Object.values(filters).some(f => Array.isArray(f) ? f.length > 0 : f !== null && f !== 'all') 
+                      ? 'Try adjusting your search or filters' 
+                      : 'Bookings will appear here when customers make reservations'}
+                  </p>
+                </div>
+              </div>
+            ) : (
+              <BookingsTableAdvanced
+                bookings={filteredBookings}
+                selectedRows={selectedRows}
+                onSelectedRowsChange={setSelectedRows}
+                sortConfig={sortConfig}
+                onSortChange={setSortConfig}
+                onRowClick={handleRowClick}
+                onBulkAction={handleBulkAction}
+                ref={tableRef}
+              />
+            )}
           </Card>
         </motion.div>
 
