@@ -20,6 +20,8 @@ import {
   EyeOff,
   XCircle,
   Edit,
+  RefreshCw,
+  AlertTriangle,
 } from 'lucide-react';
 import {
   Table,
@@ -45,104 +47,66 @@ import {
 } from '@/components/ui/tooltip';
 import { formatDistanceToNow } from 'date-fns';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useAuth } from '../contexts/AuthContext';
+import { fetchCustomersFromBookings } from '../services/bookingService';
 
-// --- Analytics Engine & Data Simulation ---
-// This would typically be a separate module, included here for demonstration.
-
-// 1. Raw Sample Data
-const rawCustomers = [
-  // S. Perera - High-value, recent
-  { id: 'CUST-001', name: 'S. Perera', email: 's.perera@example.com', tags: ['VIP'], bookings: [
-    { date: new Date('2025-08-18'), spend: 800, onTime: true, cancelled: false },
-    { date: new Date('2025-06-10'), spend: 650, onTime: true, cancelled: false },
-    { date: new Date('2025-03-01'), spend: 720, onTime: true, cancelled: false },
-    { date: new Date('2024-12-15'), spend: 950, onTime: true, cancelled: false },
-    { date: new Date('2024-10-20'), spend: 400, onTime: false, cancelled: false },
-    { date: new Date('2024-08-05'), spend: 540, onTime: true, cancelled: false },
-    { date: new Date('2024-05-11'), spend: 500, onTime: true, cancelled: false },
-  ]},
-  // L. Nguyen - At-risk, infrequent
-  { id: 'CUST-002', name: 'L. Nguyen', email: 'l.nguyen@example.com', tags: [], bookings: [
-    { date: new Date('2025-05-12'), spend: 220, onTime: true, cancelled: false },
-    { date: new Date('2024-09-01'), spend: 300, onTime: true, cancelled: true },
-  ]},
-  // J. Kaur - Loyal, NFP
-  { id: 'CUST-003', name: 'J. Kaur', email: 'j.kaur@community.org', tags: ['NFP', 'VIP'], bookings: [
-    { date: new Date('2025-07-25'), spend: 450, onTime: true, cancelled: false },
-    { date: new Date('2025-04-15'), spend: 400, onTime: true, cancelled: false },
-    { date: new Date('2025-01-10'), spend: 550, onTime: true, cancelled: false },
-    { date: new Date('2024-11-05'), spend: 380, onTime: true, cancelled: false },
-    { date: new Date('2024-07-30'), spend: 320, onTime: true, cancelled: false },
-  ]},
-  // Acme Corp - High monetary, but not frequent
-   { id: 'CUST-004', name: 'Acme Corp', email: 'accounts@acme.com', tags: ['Business'], bookings: [
-    { date: new Date('2025-04-02'), spend: 4500, onTime: true, cancelled: false },
-    { date: new Date('2024-04-01'), spend: 4200, onTime: true, cancelled: false },
-  ]},
-];
-
-// 2. Quintile Calculation Helper
-const getQuintile = (value, inverted = false) => {
-  if (value <= 0.2) return inverted ? 5 : 1;
-  if (value <= 0.4) return inverted ? 4 : 2;
-  if (value <= 0.6) return inverted ? 3 : 3;
-  if (value <= 0.8) return inverted ? 2 : 4;
-  return inverted ? 1 : 5;
-};
-
-// 3. Analytics Computation Function
-const computeCustomerAnalytics = (customers) => {
-  const now = new Date();
-  const oneYearAgo = new Date(new Date().setFullYear(now.getFullYear() - 1));
-
-  // Find max values for normalization
-  const maxRecency = Math.max(...customers.map(c => c.bookings.length > 0 ? now - new Date(c.bookings[0].date) : now - oneYearAgo));
-  const maxFrequency = Math.max(...customers.map(c => c.bookings.filter(b => !b.cancelled && new Date(b.date) > oneYearAgo).length));
-  const maxMonetary = Math.max(...customers.map(c => c.bookings.filter(b => !b.cancelled && new Date(b.date) > oneYearAgo).reduce((sum, b) => sum + b.spend, 0)));
-
-  return customers.map(c => {
-    const validBookings = c.bookings.filter(b => !b.cancelled);
-    const last12mBookings = validBookings.filter(b => new Date(b.date) > oneYearAgo);
-
-    const recencyDays = validBookings.length > 0 ? (now - new Date(validBookings[0].date)) / (1000 * 3600 * 24) : 365;
-    const frequency12m = last12mBookings.length;
-    const monetary12m = last12mBookings.reduce((sum, b) => sum + b.spend, 0);
-
-    const R = getQuintile(recencyDays / (maxRecency || 365), true);
-    const F = getQuintile(frequency12m / (maxFrequency || 1));
-    const M = getQuintile(monetary12m / (maxMonetary || 1));
-    
-    const lifetimeSpend = validBookings.reduce((sum, b) => sum + b.spend, 0);
-    const avgSpendPerBooking = validBookings.length > 0 ? lifetimeSpend / validBookings.length : 0;
-    const CLV = avgSpendPerBooking * frequency12m * 2.5; // Simple heuristic: 2.5 year tenure
-
-    return {
-      ...c,
-      rfm: `${R}${F}${M}`,
-      clv: CLV,
-      lastActiveDays: Math.round(recencyDays),
-      totalBookings: validBookings.length,
-      lifetimeSpend,
-    };
-  });
-};
-
-const customerData = computeCustomerAnalytics(rawCustomers);
 
 
 export default function CustomersPage() {
-  const [customers, setCustomers] = useState(customerData);
-  const [filteredCustomers, setFilteredCustomers] = useState(customerData);
+  const { user } = useAuth();
+  const [customers, setCustomers] = useState([]);
+  const [filteredCustomers, setFilteredCustomers] = useState([]);
   const [selectedRows, setSelectedRows] = useState(new Set());
   const [searchTerm, setSearchTerm] = useState('');
   const [sortConfig, setSortConfig] = useState({ column: 'clv', direction: 'desc' });
   const [activeCustomer, setActiveCustomer] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [refreshing, setRefreshing] = useState(false);
+
+  // Fetch customers from bookings
+  const fetchCustomers = useCallback(async (isRefresh = false) => {
+    if (!user?.id) {
+      console.log('No user ID available for customers:', user);
+      return;
+    }
+    
+    try {
+      if (isRefresh) {
+        setRefreshing(true);
+      } else {
+        setLoading(true);
+      }
+      setError(null);
+
+      const token = localStorage.getItem('token');
+      if (!token) {
+        throw new Error('No authentication token found');
+      }
+
+      const customersData = await fetchCustomersFromBookings(user.id, token);
+      setCustomers(customersData);
+      setFilteredCustomers(customersData);
+      
+    } catch (err) {
+      console.error('Error fetching customers:', err);
+      setError(err.message);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  }, [user]);
+
+  // Fetch customers on component mount and when user changes
+  useEffect(() => {
+    if (user?.id) {
+      fetchCustomers();
+    }
+  }, [user?.id, fetchCustomers]);
 
   // Debounced search
   useEffect(() => {
     const handler = setTimeout(() => {
-      // In a real app, you'd apply the filter here.
-      // For now, we'll just log it.
       if(searchTerm) console.log(`Searching for: ${searchTerm}`);
     }, 300);
     return () => clearTimeout(handler);
@@ -151,19 +115,37 @@ export default function CustomersPage() {
   // Filtering and Sorting Logic
   useEffect(() => {
     let processed = [...customers];
-    // Add filtering logic here based on searchTerm and other filters
     
+    // Search filtering
+    if (searchTerm) {
+      const term = searchTerm.toLowerCase();
+      processed = processed.filter(customer => 
+        customer.name.toLowerCase().includes(term) ||
+        customer.email.toLowerCase().includes(term) ||
+        (customer.phone && customer.phone.includes(term))
+      );
+    }
+    
+    // Sorting
     if (sortConfig.column) {
       processed.sort((a, b) => {
-        if (a[sortConfig.column] < b[sortConfig.column]) {
+        const aValue = a[sortConfig.column];
+        const bValue = b[sortConfig.column];
+        
+        if (typeof aValue === 'string' && typeof bValue === 'string') {
+          return sortConfig.direction === 'asc' ? aValue.localeCompare(bValue) : bValue.localeCompare(aValue);
+        }
+        
+        if (aValue < bValue) {
           return sortConfig.direction === 'asc' ? -1 : 1;
         }
-        if (a[sortConfig.column] > b[sortConfig.column]) {
+        if (aValue > bValue) {
           return sortConfig.direction === 'asc' ? 1 : -1;
         }
         return 0;
       });
     }
+    
     setFilteredCustomers(processed);
   }, [customers, searchTerm, sortConfig]);
 
@@ -202,6 +184,14 @@ export default function CustomersPage() {
               <p className="mt-1 text-gray-500">Directory, insights and actions for every customer.</p>
             </div>
             <div className="flex gap-2">
+              <Button 
+                variant="outline" 
+                onClick={() => fetchCustomers(true)}
+                disabled={refreshing}
+              >
+                <RefreshCw className={`mr-2 h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
+                {refreshing ? 'Refreshing...' : 'Refresh'}
+              </Button>
               <Button variant="outline"><Users className="mr-2 h-4 w-4" />Merge Duplicates</Button>
               <Button variant="outline"><Download className="mr-2 h-4 w-4" />Export CSV</Button>
               <Button><Plus className="mr-2 h-4 w-4" />New Customer</Button>
@@ -212,26 +202,37 @@ export default function CustomersPage() {
           <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <Card>
               <CardContent className="pt-6">
-                <p className="text-sm font-medium text-gray-500">Active Customers (30d)</p>
-                <p className="text-2xl font-bold">12</p>
+                <p className="text-sm font-medium text-gray-500">Total Customers</p>
+                <p className="text-2xl font-bold">{customers.length}</p>
               </CardContent>
             </Card>
              <Card>
               <CardContent className="pt-6">
-                <p className="text-sm font-medium text-gray-500">New Customers (90d)</p>
-                <p className="text-2xl font-bold">5</p>
+                <p className="text-sm font-medium text-gray-500">VIP Customers</p>
+                <p className="text-2xl font-bold">{customers.filter(c => c.tags.includes('VIP')).length}</p>
               </CardContent>
             </Card>
              <Card>
               <CardContent className="pt-6">
                 <p className="text-sm font-medium text-gray-500">At-Risk Customers</p>
-                <p className="text-2xl font-bold">1</p>
+                <p className="text-2xl font-bold">{customers.filter(c => c.segment === 'At-Risk').length}</p>
               </CardContent>
             </Card>
              <Card>
               <CardContent className="pt-6">
                 <p className="text-sm font-medium text-gray-500">Top Segment</p>
-                <p className="text-2xl font-bold">Champions</p>
+                <p className="text-2xl font-bold">
+                  {customers.length > 0 ? 
+                    customers.reduce((acc, curr) => {
+                      acc[curr.segment] = (acc[curr.segment] || 0) + 1;
+                      return acc;
+                    }, {}) && Object.entries(customers.reduce((acc, curr) => {
+                      acc[curr.segment] = (acc[curr.segment] || 0) + 1;
+                      return acc;
+                    }, {})).sort(([,a], [,b]) => b - a)[0]?.[0] || 'N/A'
+                    : 'N/A'
+                  }
+                </p>
               </CardContent>
             </Card>
           </section>
@@ -267,6 +268,38 @@ export default function CustomersPage() {
           {/* Main Table */}
           <Card>
             <CardContent className="p-0">
+              {loading ? (
+                <div className="flex items-center justify-center h-64">
+                  <div className="text-center">
+                    <RefreshCw className="h-8 w-8 animate-spin mx-auto mb-4 text-blue-500" />
+                    <p className="text-gray-600">Loading customers...</p>
+                  </div>
+                </div>
+              ) : error ? (
+                <div className="flex items-center justify-center h-64">
+                  <div className="text-center">
+                    <AlertTriangle className="h-8 w-8 mx-auto mb-4 text-red-500" />
+                    <p className="text-red-600 mb-4">{error}</p>
+                    <Button onClick={() => fetchCustomers()} variant="outline">
+                      <RefreshCw className="mr-2 h-4 w-4" />
+                      Try Again
+                    </Button>
+                  </div>
+                </div>
+              ) : filteredCustomers.length === 0 ? (
+                <div className="flex items-center justify-center h-64">
+                  <div className="text-center">
+                    <Users className="h-8 w-8 mx-auto mb-4 text-gray-400" />
+                    <p className="text-gray-600 mb-4">No customers found</p>
+                    <p className="text-sm text-gray-500">
+                      {searchTerm 
+                        ? 'Try adjusting your search terms' 
+                        : 'Customers will appear here when they make bookings'
+                      }
+                    </p>
+                  </div>
+                </div>
+              ) : (
                 <Table>
                   <TableHeader>
                     <TableRow>
@@ -291,8 +324,14 @@ export default function CustomersPage() {
                             {customer.tags.includes('NFP') && <Badge variant="secondary">NFP</Badge>}
                           </div>
                           <div className="text-sm text-gray-500">{customer.email}</div>
+                          {customer.phone && <div className="text-xs text-gray-400">{customer.phone}</div>}
                         </TableCell>
-                        <TableCell><Badge variant="outline">{customer.rfm}</Badge></TableCell>
+                        <TableCell>
+                          <div className="flex flex-col gap-1">
+                            <Badge variant="outline">{customer.rfm}</Badge>
+                            <span className="text-xs text-gray-500">{customer.segment}</span>
+                          </div>
+                        </TableCell>
                         <TableCell className="text-right">${customer.clv.toFixed(0)}</TableCell>
                         <TableCell>{formatDistanceToNow(new Date().setDate(new Date().getDate() - customer.lastActiveDays))} ago</TableCell>
                         <TableCell className="text-center">{customer.totalBookings}</TableCell>
@@ -305,6 +344,7 @@ export default function CustomersPage() {
                     ))}
                   </TableBody>
                 </Table>
+              )}
             </CardContent>
           </Card>
         </motion.main>
@@ -323,7 +363,11 @@ export default function CustomersPage() {
                         <div className="flex justify-between items-start">
                              <div>
                                 <h2 className="text-xl font-bold">{activeCustomer.name}</h2>
-                                {activeCustomer.tags.map(tag => <Badge key={tag} variant={tag === 'VIP' ? 'destructive' : 'secondary'} className="mr-1">{tag}</Badge>)}
+                                <div className="text-sm text-gray-500 mt-1">{activeCustomer.email}</div>
+                                {activeCustomer.phone && <div className="text-sm text-gray-500">{activeCustomer.phone}</div>}
+                                <div className="mt-2">
+                                  {activeCustomer.tags.map(tag => <Badge key={tag} variant={tag === 'VIP' ? 'destructive' : 'secondary'} className="mr-1">{tag}</Badge>)}
+                                </div>
                             </div>
                             <Button variant="ghost" size="icon" onClick={() => setActiveCustomer(null)}>
                                 <XCircle className="h-5 w-5" />
@@ -346,9 +390,24 @@ export default function CustomersPage() {
                              <CardContent className="pt-6">
                                 <h3 className="text-lg font-semibold mb-2">Recent Bookings</h3>
                                 <ul className="space-y-2">
-                                {activeCustomer.bookings.slice(0, 3).map((b, i) => (
+                                {activeCustomer.bookings.slice(0, 5).map((b, i) => (
                                     <li key={i} className="text-sm p-2 bg-gray-50 rounded-md">
-                                        {new Date(b.date).toLocaleDateString('en-AU')} - ${b.spend} {b.cancelled && <Badge variant="destructive" className="ml-2">Cancelled</Badge>}
+                                        <div className="flex justify-between items-start">
+                                          <div>
+                                            <div className="font-medium">{b.eventType}</div>
+                                            <div className="text-xs text-gray-500">{new Date(b.date).toLocaleDateString('en-AU')} - {b.startTime} to {b.endTime}</div>
+                                            <div className="text-xs text-gray-500">{b.resource}</div>
+                                          </div>
+                                          <div className="text-right">
+                                            <div className="font-medium">${b.spend.toFixed(2)}</div>
+                                            <Badge 
+                                              variant={b.status === 'confirmed' ? 'default' : b.status === 'cancelled' ? 'destructive' : 'secondary'}
+                                              className="text-xs"
+                                            >
+                                              {b.status}
+                                            </Badge>
+                                          </div>
+                                        </div>
                                     </li>
                                 ))}
                                 </ul>
