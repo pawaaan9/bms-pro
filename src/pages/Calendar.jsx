@@ -24,10 +24,11 @@ import {
 import { format, addDays, startOfWeek } from "date-fns";
 import { useAuth } from "../contexts/AuthContext";
 import { fetchBookingsForCalendar, updateBookingStatus, fetchResources } from "../services/bookingService";
+import { getDataUserId } from "../services/userService";
 
 
 export default function Calendar() {
-  const { user } = useAuth();
+  const { user, parentUserData } = useAuth();
   const [currentDate, setCurrentDate] = useState(new Date());
   const [view, setView] = useState("Week");
   const [selectedEvent, setSelectedEvent] = useState(null);
@@ -62,9 +63,12 @@ export default function Calendar() {
         throw new Error('No authentication token found');
       }
 
+      // Get the appropriate user ID for data fetching
+      const dataUserId = getDataUserId(user, parentUserData);
+
       // Fetch both bookings and resources in parallel
       const [calendarEvents, resourcesData] = await Promise.all([
-        fetchBookingsForCalendar(user.id, token),
+        fetchBookingsForCalendar(dataUserId, token),
         fetchResources(token)
       ]);
       
@@ -79,7 +83,7 @@ export default function Calendar() {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [user]);
+  }, [user, parentUserData]);
 
   // Fetch data on component mount and when user changes
   useEffect(() => {

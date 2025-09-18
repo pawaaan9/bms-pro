@@ -29,6 +29,7 @@ import {
 import { DatePicker } from '@/components/ui/date-picker';
 import { useAuth } from '../contexts/AuthContext';
 import { fetchDashboardData } from '../services/dashboardService';
+import { getDataUserId } from '../services/userService';
 
 const sampleData = {
   kpis: {
@@ -99,7 +100,7 @@ const sampleData = {
 
 export default function Dashboard() {
   const navigate = useNavigate();
-  const { token, getToken, user, loading: authLoading } = useAuth();
+  const { token, getToken, user, parentUserData, loading: authLoading } = useAuth();
   const [dashboardData, setDashboardData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -128,7 +129,10 @@ export default function Dashboard() {
       try {
         setLoading(true);
         setError(null);
-        const data = await fetchDashboardData(authToken, selectedResource);
+        
+        // Get the appropriate user ID for data fetching
+        const dataUserId = getDataUserId(user, parentUserData);
+        const data = await fetchDashboardData(authToken, dataUserId, selectedResource);
         setDashboardData(data);
       } catch (err) {
         console.error('Failed to load dashboard data:', err);
@@ -141,7 +145,7 @@ export default function Dashboard() {
     };
 
     loadDashboardData();
-  }, [token, getToken, user, authLoading, selectedResource]);
+  }, [token, getToken, user, parentUserData, authLoading, selectedResource]);
 
   if (loading) {
     return (

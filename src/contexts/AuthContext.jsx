@@ -14,6 +14,7 @@ export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [token, setToken] = useState(null);
+  const [parentUserData, setParentUserData] = useState(null);
 
   const fetchUserProfile = async (token) => {
     try {
@@ -27,6 +28,27 @@ export const AuthProvider = ({ children }) => {
       if (response.ok) {
         const userData = await response.json();
         console.log('User profile fetched:', userData); // Debug log
+        
+        // If this is a sub-user, fetch parent user data
+        if (userData.role === 'sub_user' && userData.parentUserId) {
+          try {
+            const parentResponse = await fetch(`http://localhost:5000/api/users/parent-data/${userData.parentUserId}`, {
+              headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+              }
+            });
+            
+            if (parentResponse.ok) {
+              const parentData = await parentResponse.json();
+              setParentUserData(parentData);
+              console.log('Parent user data fetched:', parentData);
+            }
+          } catch (error) {
+            console.error('Failed to fetch parent user data:', error);
+          }
+        }
+        
         return userData;
       } else {
         console.error('Failed to fetch profile:', response.status, response.statusText);
@@ -77,6 +99,7 @@ export const AuthProvider = ({ children }) => {
     localStorage.removeItem('role');
     setUser(null);
     setToken(null);
+    setParentUserData(null);
     // Redirect to login page and prevent back navigation
     window.location.replace('/login');
   };
@@ -89,6 +112,62 @@ export const AuthProvider = ({ children }) => {
     return user?.role === 'hall_owner';
   };
 
+  const isSubUser = () => {
+    return user?.role === 'sub_user';
+  };
+
+  const hasPermission = (permission) => {
+    // Super admins and hall owners have full access
+    if (isSuperAdmin() || isHallOwner()) {
+      return true;
+    }
+    
+    // Sub-users need specific permission
+    if (isSubUser()) {
+      return user?.permissions?.includes(permission) || false;
+    }
+    
+    return false;
+  };
+
+  const canAccessPage = (pageName) => {
+    // Map page names to permission IDs
+    const pagePermissionMap = {
+      'Dashboard': 'dashboard',
+      'Calendar': 'calendar',
+      'BookingsAll': 'bookings',
+      'BookingsPending': 'bookings',
+      'BookingsHolds': 'bookings',
+      'BookingsConfirmed': 'bookings',
+      'BookingsCompleted': 'bookings',
+      'BookingsCancelled': 'bookings',
+      'Invoices': 'invoices',
+      'Resources': 'resources',
+      'ResourcesHalls': 'resources',
+      'ResourcesHolidays': 'resources',
+      'ResourcesBlockouts': 'resources',
+      'PricingRatecards': 'pricing',
+      'PricingAddons': 'pricing',
+      'Customers': 'customers',
+      'Reports': 'reports',
+      'CommsMessages': 'comms',
+      'CommsTemplates': 'comms',
+      'SettingsGeneral': 'settings',
+      'SettingsPayments': 'settings',
+      'SettingsTaxes': 'settings',
+      'SettingsAvailability': 'settings',
+      'SettingsPolicies': 'settings',
+      'SettingsRoles': 'settings',
+      'SettingsIntegrations': 'settings',
+      'SettingsPrivacy': 'settings',
+      'Audit': 'audit',
+      'Help': 'help'
+    };
+
+    const permission = pagePermissionMap[pageName];
+    return hasPermission(permission);
+  };
+
   const getToken = () => {
     return token || localStorage.getItem('token');
   };
@@ -96,11 +175,15 @@ export const AuthProvider = ({ children }) => {
   const value = {
     user,
     token,
+    parentUserData,
     getToken,
     login,
     logout,
     isSuperAdmin,
     isHallOwner,
+    isSubUser,
+    hasPermission,
+    canAccessPage,
     loading
   };
 

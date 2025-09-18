@@ -120,7 +120,7 @@ export default function Layout({ children, currentPageName }) {
   const [expandedItems, setExpandedItems] = useState(new Set());
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
-  const { isSuperAdmin, isHallOwner, logout, user } = useAuth();
+  const { isSuperAdmin, isHallOwner, isSubUser, canAccessPage, logout, user, parentUserData } = useAuth();
 
   // Auto-expand parent menu if child route is active
   useEffect(() => {
@@ -162,6 +162,37 @@ export default function Layout({ children, currentPageName }) {
 
   const isActiveRoute = (url) => location.pathname === url;
   const hasActiveChild = (item) => item.children?.some((child) => isActiveRoute(child.url));
+
+  // Helper function to check if user can access a navigation item
+  const canAccessNavItem = (item) => {
+    // Super admins and hall owners have full access
+    if (isSuperAdmin() || isHallOwner()) {
+      return true;
+    }
+    
+    // Sub-users need specific permissions
+    if (isSubUser()) {
+      // Check if user has permission for this page
+      return canAccessPage(item.title);
+    }
+    
+    return false;
+  };
+
+  // Helper function to check if user can access a child navigation item
+  const canAccessChildNavItem = (child) => {
+    // Super admins and hall owners have full access
+    if (isSuperAdmin() || isHallOwner()) {
+      return true;
+    }
+    
+    // Sub-users need specific permissions
+    if (isSubUser()) {
+      return canAccessPage(child.title);
+    }
+    
+    return false;
+  };
 
   const isLoginPage = location.pathname === '/login';
   return (
@@ -396,6 +427,9 @@ export default function Layout({ children, currentPageName }) {
                   {user?.role === 'hall_owner' && user?.hallName && (
                     <p className="text-sm text-gray-500 mt-1">{user.hallName}</p>
                   )}
+                  {user?.role === 'sub_user' && parentUserData?.hallName && (
+                    <p className="text-sm text-gray-500 mt-1">{parentUserData.hallName}</p>
+                  )}
                 </div>
                 <button
                   className="md:hidden p-2 rounded-md hover:bg-gray-100"
@@ -407,8 +441,8 @@ export default function Layout({ children, currentPageName }) {
             <nav className="p-4 flex-1">
               <ul className="space-y-1">
                 {navigationItems.map((item) => {
-                  // Hide Users menu item for hall owners
-                  if (item.title === "Users" && !isSuperAdmin()) {
+                  // Check if user can access this navigation item
+                  if (!canAccessNavItem(item)) {
                     return null;
                   }
                   
@@ -427,12 +461,8 @@ export default function Layout({ children, currentPageName }) {
                           </summary>
                           <ul className="nav-children">
                             {item.children.map((child) => {
-                              // Show "My Resources" only to hall owners
-                              if (child.title === "My Resources" && !isHallOwner()) {
-                                return null;
-                              }
-                              // Hide other resource items from hall owners
-                              if (item.title === "Resources" && child.title !== "My Resources" && isHallOwner()) {
+                              // Check if user can access this child navigation item
+                              if (!canAccessChildNavItem(child)) {
                                 return null;
                               }
                               
@@ -473,9 +503,13 @@ export default function Layout({ children, currentPageName }) {
                     </div>
                     <div>
                       <p className="text-sm font-medium text-gray-900">
-                        {user.role === 'super_admin' ? 'Super Admin' : 'Hall Owner'}
+                        {user.role === 'super_admin' ? 'Super Admin' : 
+                         user.role === 'hall_owner' ? 'Hall Owner' : 
+                         user.role === 'sub_user' ? (user.name || 'Sub-User') : 'User'}
                       </p>
-                      <p className="text-xs text-gray-500">Logged in</p>
+                      <p className="text-xs text-gray-500">
+                        {user.role === 'sub_user' ? 'Sub-User' : 'Logged in'}
+                      </p>
                     </div>
                   </div>
                 </div>

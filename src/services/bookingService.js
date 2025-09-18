@@ -35,7 +35,7 @@ export const transformBookingToCalendarEvent = (backendBooking) => {
   };
 };
 
-// Fetch bookings for a hall owner
+// Fetch bookings for a hall owner (or parent user for sub-users)
 export const fetchBookingsForCalendar = async (hallOwnerId, token) => {
   try {
     const response = await fetch(`${API_BASE_URL}/bookings/hall-owner/${hallOwnerId}`, {
@@ -286,7 +286,7 @@ export const computeCustomerAnalytics = (customers) => {
   });
 };
 
-// Fetch customers from bookings for a hall owner
+// Fetch customers from bookings for a hall owner (or parent user for sub-users)
 export const fetchCustomersFromBookings = async (hallOwnerId, token) => {
   try {
     const response = await fetch(`${API_BASE_URL}/bookings/hall-owner/${hallOwnerId}`, {
