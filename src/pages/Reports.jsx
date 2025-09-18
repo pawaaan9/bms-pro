@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useRef } from 'react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -15,6 +15,8 @@ import {
   ArrowUpDown,
   Info,
   Filter,
+  Loader2,
+  RefreshCw,
 } from 'lucide-react';
 import {
   Table,
@@ -49,35 +51,10 @@ import {
 } from '@/components/ui/tooltip';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, BarChart, Bar, PieChart, Pie, Cell, Legend, Area, AreaChart } from 'recharts';
 import { format, subDays, addDays, addMonths } from 'date-fns';
+import { reportsService } from '@/services/reportsService';
+import { exportToPDF, exportAllReportsAsCSV } from '@/utils/exportUtils';
 
-// --- Sample Data (Production-Ready Business Intelligence) ---
-
-// Executive KPIs - exactly as specified
-const executiveKPIs = {
-  bookings: { value: 45, change: 8, period: 'QoQ', trend: 'up' },
-  revenue: { value: 11600, change: 6, period: 'QoQ', trend: 'up' },
-  utilisation: { value: 71, change: 3, period: 'pp', trend: 'up' },
-  depositConversion: { value: 82, change: -2, period: 'MoM', trend: 'down' },
-  onTimePayments: { value: 88, change: 1, period: 'MoM', trend: 'up' },
-  cancellationRate: { value: 6, change: 0, period: 'MoM', trend: 'neutral' },
-};
-
-// Historical data - exactly as specified
-const historicalData = [
-  { month: 'June 2025', bookings: 12, revenue: 3200 },
-  { month: 'July 2025', bookings: 18, revenue: 4500 },
-  { month: 'August 2025', bookings: 15, revenue: 3900 },
-];
-
-// Pipeline data - exactly as specified
-const pipelineData = [
-  { month: 'Sep 2025', bookings: 10, revenue: 3000 },
-  { month: 'Oct 2025', bookings: 14, revenue: 3500 },
-  { month: 'Nov 2025', bookings: 11, revenue: 3200 },
-  { month: 'Dec 2025', bookings: 9, revenue: 2800 },
-  { month: 'Jan 2026', bookings: 8, revenue: 2600 },
-  { month: 'Feb 2026', bookings: 12, revenue: 3400 },
-];
+// --- Data State Management ---
 
 // Forecast scenarios using seasonal naïve methodology
 const generateForecastData = (scenario = 'Base') => {
@@ -589,20 +566,90 @@ export default function Reports() {
   const [showAnomalyDrawer, setShowAnomalyDrawer] = useState(false);
   const [selectedAnomaly, setSelectedAnomaly] = useState(null);
   
+  // Data state
+  const [reportsData, setReportsData] = useState({
+    executiveKPIs: null,
+    historicalData: null,
+    pipelineData: null,
+    funnelData: null,
+    paymentAnalysis: null,
+    resourceUtilisation: null,
+    cancellationReasons: null,
+    forecastData: null,
+    summary: null
+  });
+  
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [lastUpdated, setLastUpdated] = useState(null);
+  
   const cohortData = generateCohortData();
   
+  // Fetch reports data
+  const fetchReportsData = async () => {
+    try {
+      console.log('🚀 Starting to fetch reports data...');
+      setLoading(true);
+      setError(null);
+      
+      const period = dateRange === 'Last 30 days' ? '30d' : 
+                    dateRange === 'Last 90 days' ? '90d' : 
+                    dateRange === 'Last 180 days' ? '180d' : '1y';
+      
+      console.log('📊 Fetching data for period:', period);
+      const data = await reportsService.getAllReportsData(period, 6);
+      console.log('📈 Received reports data:', data);
+      
+      setReportsData(data);
+      setLastUpdated(new Date());
+      console.log('✅ Reports data updated successfully');
+    } catch (err) {
+      console.error('❌ Error fetching reports data:', err);
+      setError(err.message || 'Failed to fetch reports data');
+    } finally {
+      setLoading(false);
+    }
+  };
+  
+  // Load data on component mount and when date range changes
+  useEffect(() => {
+    fetchReportsData();
+  }, [dateRange]);
+  
   // Export functions
-  const exportPDF = () => {
-    console.log('Exporting PDF report...');
-    // Implementation would generate PDF with timestamp
-    const timestamp = format(new Date(), 'yyyy-MM-dd_HH-mm-ss');
-    alert(`PDF export initiated: reports_${timestamp}.pdf`);
+  const exportPDF = async () => {
+    try {
+      if (!reportsData.executiveKPIs) {
+        alert('No data available to export. Please refresh the reports first.');
+        return;
+      }
+      
+      await exportToPDF(reportsData, 'business_reports');
+    } catch (error) {
+      console.error('Error exporting PDF:', error);
+      // Try fallback method
+      try {
+        const { exportToPDFFallback } = await import('@/utils/exportUtils');
+        exportToPDFFallback(reportsData, 'business_reports');
+      } catch (fallbackError) {
+        console.error('Fallback PDF export also failed:', fallbackError);
+        alert('PDF export is not available. Please use CSV export instead or install the required dependencies.');
+      }
+    }
   };
   
   const exportCSVs = () => {
-    console.log('Exporting CSV files...');
-    const timestamp = format(new Date(), 'yyyy-MM-dd_HH-mm-ss');
-    alert(`CSV exports initiated: reports_bundle_${timestamp}.zip`);
+    try {
+      if (!reportsData.executiveKPIs) {
+        alert('No data available to export. Please refresh the reports first.');
+        return;
+      }
+      
+      exportAllReportsAsCSV(reportsData);
+    } catch (error) {
+      console.error('Error exporting CSVs:', error);
+      alert('Failed to export CSV files. Please try again.');
+    }
   };
 
   const ScheduleEmailDialog = () => {
@@ -674,23 +721,63 @@ export default function Reports() {
         <header className="flex flex-wrap items-center justify-between gap-4">
           <div>
             <h1 className="text-3xl font-bold text-gray-900">Reports</h1>
-            <p className="mt-1 text-gray-600">Performance, forecasts and insights.</p>
+            <p className="mt-1 text-gray-600">
+              Performance, forecasts and insights.
+              {lastUpdated && (
+                <span className="ml-2 text-sm text-gray-500">
+                  Last updated: {format(lastUpdated, 'dd MMM yyyy HH:mm')}
+                </span>
+              )}
+            </p>
           </div>
           <div className="flex gap-2">
-            <Button variant="outline" onClick={exportPDF}>
+            <Button 
+              variant="outline" 
+              onClick={fetchReportsData}
+              disabled={loading}
+            >
+              {loading ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <RefreshCw className="mr-2 h-4 w-4" />
+              )}
+              Refresh
+            </Button>
+            <Button variant="outline" onClick={exportPDF} disabled={loading}>
               <FileText className="mr-2 h-4 w-4" />
               Export PDF
             </Button>
-            <Button variant="outline" onClick={exportCSVs}>
+            <Button variant="outline" onClick={exportCSVs} disabled={loading}>
               <Download className="mr-2 h-4 w-4" />
               Download CSVs
             </Button>
-            <Button onClick={() => setShowScheduleDialog(true)}>
+            <Button onClick={() => setShowScheduleDialog(true)} disabled={loading}>
               <Mail className="mr-2 h-4 w-4" />
               Schedule Email
             </Button>
           </div>
         </header>
+
+        {/* Error State */}
+        {error && (
+          <Card className="border-red-200 bg-red-50">
+            <CardContent className="pt-6">
+              <div className="flex items-center gap-2 text-red-800">
+                <AlertTriangle className="h-5 w-5" />
+                <span className="font-medium">Error loading reports data</span>
+              </div>
+              <p className="mt-2 text-red-700">{error}</p>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={fetchReportsData}
+                className="mt-3"
+              >
+                Try Again
+              </Button>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Top Filters */}
         <Card>
@@ -698,7 +785,7 @@ export default function Reports() {
             <div className="flex flex-wrap items-center gap-4">
               <div className="flex items-center gap-2">
                 <Label>Date Range:</Label>
-                <Select value={dateRange} onValueChange={setDateRange}>
+                <Select value={dateRange} onValueChange={setDateRange} disabled={loading}>
                   <SelectTrigger className="w-40">
                     <SelectValue />
                   </SelectTrigger>
@@ -753,91 +840,141 @@ export default function Reports() {
         {/* Executive KPIs */}
         <section aria-labelledby="kpi-heading">
           <h2 id="kpi-heading" className="text-xl font-semibold mb-4">Executive KPIs</h2>
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
-            <KPICard 
-              title="Bookings (90d)" 
-              value={executiveKPIs.bookings.value}
-              change={executiveKPIs.bookings.change}
-              period={executiveKPIs.bookings.period}
-              trend={executiveKPIs.bookings.trend}
-            />
-            <KPICard 
-              title="Revenue (90d)" 
-              value={executiveKPIs.revenue.value}
-              prefix="$"
-              suffix=" AUD"
-              change={executiveKPIs.revenue.change}
-              period={executiveKPIs.revenue.period}
-              trend={executiveKPIs.revenue.trend}
-            />
-            <KPICard 
-              title="Utilisation (90d)" 
-              value={executiveKPIs.utilisation.value}
-              suffix="%"
-              change={executiveKPIs.utilisation.change}
-              period={executiveKPIs.utilisation.period}
-              trend={executiveKPIs.utilisation.trend}
-            />
-            <KPICard 
-              title="Deposit Conversion" 
-              value={executiveKPIs.depositConversion.value}
-              suffix="%"
-              change={executiveKPIs.depositConversion.change}
-              period={executiveKPIs.depositConversion.period}
-              trend={executiveKPIs.depositConversion.trend}
-            />
-            <KPICard 
-              title="On-time Payments" 
-              value={executiveKPIs.onTimePayments.value}
-              suffix="%"
-              change={executiveKPIs.onTimePayments.change}
-              period={executiveKPIs.onTimePayments.period}
-              trend={executiveKPIs.onTimePayments.trend}
-            />
-            <KPICard 
-              title="Cancellation Rate" 
-              value={executiveKPIs.cancellationRate.value}
-              suffix="%"
-              change={executiveKPIs.cancellationRate.change}
-              period={executiveKPIs.cancellationRate.period}
-              trend={executiveKPIs.cancellationRate.trend}
-            />
-          </div>
+          {loading ? (
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+              {Array.from({ length: 6 }).map((_, i) => (
+                <Card key={i} className="animate-pulse">
+                  <CardHeader className="pb-2">
+                    <div className="h-4 bg-gray-200 rounded w-3/4"></div>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="h-8 bg-gray-200 rounded w-1/2 mb-2"></div>
+                    <div className="h-4 bg-gray-200 rounded w-2/3"></div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          ) : reportsData.executiveKPIs?.kpis ? (
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+              <KPICard 
+                title={`Bookings (${dateRange.toLowerCase()})`}
+                value={reportsData.executiveKPIs.kpis.bookings.value}
+                change={reportsData.executiveKPIs.kpis.bookings.change}
+                period={reportsData.executiveKPIs.kpis.bookings.period}
+                trend={reportsData.executiveKPIs.kpis.bookings.trend}
+              />
+              <KPICard 
+                title={`Revenue (${dateRange.toLowerCase()})`}
+                value={reportsData.executiveKPIs.kpis.revenue.value}
+                prefix="$"
+                suffix=" AUD"
+                change={reportsData.executiveKPIs.kpis.revenue.change}
+                period={reportsData.executiveKPIs.kpis.revenue.period}
+                trend={reportsData.executiveKPIs.kpis.revenue.trend}
+              />
+              <KPICard 
+                title={`Utilisation (${dateRange.toLowerCase()})`}
+                value={reportsData.executiveKPIs.kpis.utilisation.value}
+                suffix="%"
+                change={reportsData.executiveKPIs.kpis.utilisation.change}
+                period={reportsData.executiveKPIs.kpis.utilisation.period}
+                trend={reportsData.executiveKPIs.kpis.utilisation.trend}
+              />
+              <KPICard 
+                title="Deposit Conversion" 
+                value={reportsData.executiveKPIs.kpis.depositConversion.value}
+                suffix="%"
+                change={reportsData.executiveKPIs.kpis.depositConversion.change}
+                period={reportsData.executiveKPIs.kpis.depositConversion.period}
+                trend={reportsData.executiveKPIs.kpis.depositConversion.trend}
+              />
+              <KPICard 
+                title="On-time Payments" 
+                value={reportsData.executiveKPIs.kpis.onTimePayments.value}
+                suffix="%"
+                change={reportsData.executiveKPIs.kpis.onTimePayments.change}
+                period={reportsData.executiveKPIs.kpis.onTimePayments.period}
+                trend={reportsData.executiveKPIs.kpis.onTimePayments.trend}
+              />
+              <KPICard 
+                title="Cancellation Rate" 
+                value={reportsData.executiveKPIs.kpis.cancellationRate.value}
+                suffix="%"
+                change={reportsData.executiveKPIs.kpis.cancellationRate.change}
+                period={reportsData.executiveKPIs.kpis.cancellationRate.period}
+                trend={reportsData.executiveKPIs.kpis.cancellationRate.trend}
+              />
+            </div>
+          ) : (
+            <Card>
+              <CardContent className="pt-6">
+                <p className="text-gray-500 text-center">No KPI data available</p>
+              </CardContent>
+            </Card>
+          )}
         </section>
 
         {/* Historical & Pipeline Tables */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <Card>
             <CardHeader>
-              <CardTitle>Last 3 Months</CardTitle>
+              <CardTitle>Historical Performance</CardTitle>
             </CardHeader>
             <CardContent>
-              <SortableTable
-                data={historicalData}
-                columns={[
-                  { key: 'month', title: 'Month' },
-                  { key: 'bookings', title: 'Bookings', align: 'right' },
-                  { key: 'revenue', title: 'Revenue (AUD)', align: 'right', format: (val) => `$${val.toLocaleString()}` },
-                ]}
-                caption="Historical performance data for the last 3 months"
-              />
+              {loading ? (
+                <div className="space-y-3">
+                  {Array.from({ length: 3 }).map((_, i) => (
+                    <div key={i} className="flex justify-between items-center animate-pulse">
+                      <div className="h-4 bg-gray-200 rounded w-1/3"></div>
+                      <div className="h-4 bg-gray-200 rounded w-1/4"></div>
+                      <div className="h-4 bg-gray-200 rounded w-1/4"></div>
+                    </div>
+                  ))}
+                </div>
+              ) : reportsData.historicalData?.historicalData ? (
+                <SortableTable
+                  data={reportsData.historicalData.historicalData}
+                  columns={[
+                    { key: 'month', title: 'Month' },
+                    { key: 'bookings', title: 'Bookings', align: 'right' },
+                    { key: 'revenue', title: 'Revenue (AUD)', align: 'right', format: (val) => `$${val.toLocaleString()}` },
+                  ]}
+                  caption="Historical performance data"
+                />
+              ) : (
+                <p className="text-gray-500 text-center">No historical data available</p>
+              )}
             </CardContent>
           </Card>
           
           <Card>
             <CardHeader>
-              <CardTitle>Upcoming 6 Months (Pipeline)</CardTitle>
+              <CardTitle>Upcoming Pipeline</CardTitle>
             </CardHeader>
             <CardContent>
-              <SortableTable
-                data={pipelineData}
-                columns={[
-                  { key: 'month', title: 'Month' },
-                  { key: 'bookings', title: 'Bookings', align: 'right' },
-                  { key: 'revenue', title: 'Revenue (AUD)', align: 'right', format: (val) => `$${val.toLocaleString()}` },
-                ]}
-                caption="Pipeline projections for the next 6 months"
-              />
+              {loading ? (
+                <div className="space-y-3">
+                  {Array.from({ length: 3 }).map((_, i) => (
+                    <div key={i} className="flex justify-between items-center animate-pulse">
+                      <div className="h-4 bg-gray-200 rounded w-1/3"></div>
+                      <div className="h-4 bg-gray-200 rounded w-1/4"></div>
+                      <div className="h-4 bg-gray-200 rounded w-1/4"></div>
+                    </div>
+                  ))}
+                </div>
+              ) : reportsData.pipelineData?.pipelineData ? (
+                <SortableTable
+                  data={reportsData.pipelineData.pipelineData}
+                  columns={[
+                    { key: 'month', title: 'Month' },
+                    { key: 'bookings', title: 'Bookings', align: 'right' },
+                    { key: 'revenue', title: 'Revenue (AUD)', align: 'right', format: (val) => `$${val.toLocaleString()}` },
+                  ]}
+                  caption="Pipeline projections for upcoming months"
+                />
+              ) : (
+                <p className="text-gray-500 text-center">No pipeline data available</p>
+              )}
             </CardContent>
           </Card>
         </div>
@@ -845,13 +982,61 @@ export default function Reports() {
         {/* Forecast */}
         <Card>
           <CardHeader>
-            <CardTitle>Forecast (Seasonal Naïve)</CardTitle>
+            <CardTitle>Forecast (Linear Regression)</CardTitle>
           </CardHeader>
           <CardContent>
-            <ForecastChart 
-              scenario={forecastScenario} 
-              onScenarioChange={setForecastScenario} 
-            />
+            {loading ? (
+              <div className="h-64 flex items-center justify-center">
+                <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
+              </div>
+            ) : reportsData.forecastData ? (
+              <div className="space-y-4">
+                <div className="flex items-center gap-2">
+                  <Label>Scenario:</Label>
+                  <Select value={forecastScenario} onValueChange={setForecastScenario}>
+                    <SelectTrigger className="w-32">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Base">Base</SelectItem>
+                      <SelectItem value="Optimistic">Optimistic</SelectItem>
+                      <SelectItem value="Cautious">Cautious</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <Tooltip>
+                    <TooltipTrigger>
+                      <Info className="h-4 w-4 text-gray-400" />
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>Linear regression forecast based on historical data.</p>
+                      <p>Optimistic: +15% | Cautious: -15%</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </div>
+                
+                <div className="h-64">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <AreaChart data={reportsData.forecastData.scenarios[forecastScenario.toLowerCase()] || reportsData.forecastData.forecastData}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="month" />
+                      <YAxis />
+                      <RechartsTooltip />
+                      <Area 
+                        type="monotone" 
+                        dataKey="bookings" 
+                        stroke="#3b82f6" 
+                        fill="#dbeafe" 
+                        name="Bookings"
+                      />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+            ) : (
+              <div className="h-64 flex items-center justify-center">
+                <p className="text-gray-500">No forecast data available</p>
+              </div>
+            )}
           </CardContent>
         </Card>
 
@@ -871,22 +1056,34 @@ export default function Reports() {
             <CardTitle>Bookings Funnel</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="h-64">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={funnelData} layout="horizontal">
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis type="number" />
-                  <YAxis dataKey="stage" type="category" />
-                  <RechartsTooltip />
-                  <Bar dataKey="count" fill="#3b82f6" />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-            <div className="sr-only">
-              Booking conversion funnel shows {funnelData[0].count} initial requests
-              converting to {funnelData[funnelData.length - 1].count} completed bookings,
-              a {Math.round((funnelData[funnelData.length - 1].count / funnelData[0].count) * 100)}% conversion rate.
-            </div>
+            {loading ? (
+              <div className="h-64 flex items-center justify-center">
+                <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
+              </div>
+            ) : reportsData.funnelData?.funnelData ? (
+              <>
+                <div className="h-64">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={reportsData.funnelData.funnelData} layout="horizontal">
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis type="number" />
+                      <YAxis dataKey="stage" type="category" />
+                      <RechartsTooltip />
+                      <Bar dataKey="count" fill="#3b82f6" />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+                <div className="sr-only">
+                  Booking conversion funnel shows {reportsData.funnelData.funnelData[0]?.count || 0} initial requests
+                  converting to {reportsData.funnelData.funnelData[reportsData.funnelData.funnelData.length - 1]?.count || 0} completed bookings,
+                  a {reportsData.funnelData.funnelData[0]?.count ? Math.round((reportsData.funnelData.funnelData[reportsData.funnelData.funnelData.length - 1]?.count / reportsData.funnelData.funnelData[0]?.count) * 100) : 0}% conversion rate.
+                </div>
+              </>
+            ) : (
+              <div className="h-64 flex items-center justify-center">
+                <p className="text-gray-500">No funnel data available</p>
+              </div>
+            )}
           </CardContent>
         </Card>
 
@@ -897,29 +1094,41 @@ export default function Reports() {
               <CardTitle>Payment Timeliness</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="h-48">
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie
-                      data={[
-                        { name: 'On-time', value: paymentData.onTime, fill: '#10b981' },
-                        { name: 'Overdue', value: paymentData.overdue, fill: '#ef4444' },
-                      ]}
-                      cx="50%"
-                      cy="50%"
-                      labelLine={false}
-                      label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
-                      outerRadius={60}
-                      fill="#8884d8"
-                      dataKey="value"
-                    />
-                    <RechartsTooltip />
-                  </PieChart>
-                </ResponsiveContainer>
-              </div>
-              <div className="sr-only">
-                Payment timeliness: {paymentData.onTime}% paid on time, {paymentData.overdue}% overdue
-              </div>
+              {loading ? (
+                <div className="h-48 flex items-center justify-center">
+                  <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
+                </div>
+              ) : reportsData.paymentAnalysis?.paymentData ? (
+                <>
+                  <div className="h-48">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Pie
+                          data={[
+                            { name: 'On-time', value: reportsData.paymentAnalysis.paymentData.onTime, fill: '#10b981' },
+                            { name: 'Overdue', value: reportsData.paymentAnalysis.paymentData.overdue, fill: '#ef4444' },
+                          ]}
+                          cx="50%"
+                          cy="50%"
+                          labelLine={false}
+                          label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                          outerRadius={60}
+                          fill="#8884d8"
+                          dataKey="value"
+                        />
+                        <RechartsTooltip />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  </div>
+                  <div className="sr-only">
+                    Payment timeliness: {reportsData.paymentAnalysis.paymentData.onTime}% paid on time, {reportsData.paymentAnalysis.paymentData.overdue}% overdue
+                  </div>
+                </>
+              ) : (
+                <div className="h-48 flex items-center justify-center">
+                  <p className="text-gray-500">No payment data available</p>
+                </div>
+              )}
             </CardContent>
           </Card>
           
@@ -928,16 +1137,30 @@ export default function Reports() {
               <CardTitle>Payment Aging</CardTitle>
             </CardHeader>
             <CardContent>
-              <SortableTable
-                data={paymentData.aging}
-                columns={[
-                  { key: 'bucket', title: 'Age' },
-                  { key: 'count', title: 'Count', align: 'right' },
-                  { key: 'amount', title: 'Amount (AUD)', align: 'right', format: (val) => `$${val.toLocaleString()}` },
-                ]}
-                caption="Outstanding payment amounts by age bucket"
-                sortable={false}
-              />
+              {loading ? (
+                <div className="space-y-3">
+                  {Array.from({ length: 4 }).map((_, i) => (
+                    <div key={i} className="flex justify-between items-center animate-pulse">
+                      <div className="h-4 bg-gray-200 rounded w-1/3"></div>
+                      <div className="h-4 bg-gray-200 rounded w-1/4"></div>
+                      <div className="h-4 bg-gray-200 rounded w-1/4"></div>
+                    </div>
+                  ))}
+                </div>
+              ) : reportsData.paymentAnalysis?.paymentData?.aging ? (
+                <SortableTable
+                  data={reportsData.paymentAnalysis.paymentData.aging}
+                  columns={[
+                    { key: 'bucket', title: 'Age' },
+                    { key: 'count', title: 'Count', align: 'right' },
+                    { key: 'amount', title: 'Amount (AUD)', align: 'right', format: (val) => `$${val.toLocaleString()}` },
+                  ]}
+                  caption="Outstanding payment amounts by age bucket"
+                  sortable={false}
+                />
+              ) : (
+                <p className="text-gray-500 text-center">No payment aging data available</p>
+              )}
             </CardContent>
           </Card>
         </div>
