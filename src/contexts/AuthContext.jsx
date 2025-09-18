@@ -13,6 +13,7 @@ export const useAuth = () => {
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [token, setToken] = useState(null);
 
   const fetchUserProfile = async (token) => {
     try {
@@ -38,12 +39,13 @@ export const AuthProvider = ({ children }) => {
 
   useEffect(() => {
     // Check if user is logged in on app start
-    const token = localStorage.getItem('token');
+    const storedToken = localStorage.getItem('token');
     const role = localStorage.getItem('role');
     
-    if (token && role) {
+    if (storedToken && role) {
+      setToken(storedToken);
       // Fetch user profile data
-      fetchUserProfile(token).then(userData => {
+      fetchUserProfile(storedToken).then(userData => {
         if (userData) {
           setUser({ role, ...userData });
         } else {
@@ -56,12 +58,13 @@ export const AuthProvider = ({ children }) => {
     }
   }, []);
 
-  const login = async (token, role) => {
-    localStorage.setItem('token', token);
+  const login = async (authToken, role) => {
+    localStorage.setItem('token', authToken);
     localStorage.setItem('role', role);
+    setToken(authToken);
     
     // Fetch user profile data
-    const userData = await fetchUserProfile(token);
+    const userData = await fetchUserProfile(authToken);
     if (userData) {
       setUser({ role, ...userData });
     } else {
@@ -73,6 +76,7 @@ export const AuthProvider = ({ children }) => {
     localStorage.removeItem('token');
     localStorage.removeItem('role');
     setUser(null);
+    setToken(null);
     // Redirect to login page and prevent back navigation
     window.location.replace('/login');
   };
@@ -85,8 +89,14 @@ export const AuthProvider = ({ children }) => {
     return user?.role === 'hall_owner';
   };
 
+  const getToken = () => {
+    return token || localStorage.getItem('token');
+  };
+
   const value = {
     user,
+    token,
+    getToken,
     login,
     logout,
     isSuperAdmin,

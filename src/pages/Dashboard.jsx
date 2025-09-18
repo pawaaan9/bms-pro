@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import {
@@ -11,6 +11,7 @@ import {
   FileWarning,
   BarChart2,
   List,
+  Loader2,
 } from 'lucide-react';
 import KpiCard from '../components/dashboard/KpiCard';
 import TodaySchedule from '../components/dashboard/TodaySchedule';
@@ -26,6 +27,8 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { DatePicker } from '@/components/ui/date-picker';
+import { useAuth } from '../contexts/AuthContext';
+import { fetchDashboardData } from '../services/dashboardService';
 
 const sampleData = {
   kpis: {
@@ -96,6 +99,110 @@ const sampleData = {
 
 export default function Dashboard() {
   const navigate = useNavigate();
+  const { token, getToken, user, loading: authLoading } = useAuth();
+  const [dashboardData, setDashboardData] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [selectedResource, setSelectedResource] = useState('all');
+
+  useEffect(() => {
+    const loadDashboardData = async () => {
+      // Wait for auth to finish loading
+      if (authLoading) {
+        return;
+      }
+
+      const authToken = token || getToken();
+      if (!authToken) {
+        setError('Please log in to view dashboard data');
+        setLoading(false);
+        return;
+      }
+
+      if (!user) {
+        setError('User not authenticated');
+        setLoading(false);
+        return;
+      }
+
+      try {
+        setLoading(true);
+        setError(null);
+        const data = await fetchDashboardData(authToken, selectedResource);
+        setDashboardData(data);
+      } catch (err) {
+        console.error('Failed to load dashboard data:', err);
+        setError(err.message);
+        // Fallback to sample data if API fails
+        setDashboardData(sampleData);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadDashboardData();
+  }, [token, getToken, user, authLoading, selectedResource]);
+
+  if (loading) {
+    return (
+      <main className="space-y-6">
+        <header className="flex flex-wrap items-center justify-between gap-4">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
+            <p className="mt-1 text-gray-500">
+              Today's status across bookings, availability, and payments.
+            </p>
+          </div>
+        </header>
+        <div className="flex items-center justify-center py-12">
+          <div className="flex items-center space-x-2">
+            <Loader2 className="h-6 w-6 animate-spin" />
+            <span className="text-gray-600">Loading dashboard data...</span>
+          </div>
+        </div>
+      </main>
+    );
+  }
+
+  if (error && !dashboardData) {
+    const isAuthError = error.includes('log in') || error.includes('not authenticated');
+    
+    return (
+      <main className="space-y-6">
+        <header className="flex flex-wrap items-center justify-between gap-4">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
+            <p className="mt-1 text-gray-500">
+              Today's status across bookings, availability, and payments.
+            </p>
+          </div>
+        </header>
+        <div className="flex items-center justify-center py-12">
+          <div className="text-center">
+            <FileWarning className="h-12 w-12 text-red-500 mx-auto mb-4" />
+            <h3 className="text-lg font-medium text-gray-900 mb-2">
+              {isAuthError ? 'Authentication Required' : 'Failed to load dashboard data'}
+            </h3>
+            <p className="text-gray-600 mb-4">{error}</p>
+            <div className="flex gap-2 justify-center">
+              {isAuthError ? (
+                <Button onClick={() => navigate('/login')}>
+                  Go to Login
+                </Button>
+              ) : (
+                <Button onClick={() => window.location.reload()}>
+                  Try Again
+                </Button>
+              )}
+            </div>
+          </div>
+        </div>
+      </main>
+    );
+  }
+
+  const data = dashboardData || sampleData;
+
   return (
     <main className="space-y-6">
       {/* Header */}
@@ -105,6 +212,11 @@ export default function Dashboard() {
           <p className="mt-1 text-gray-500">
             Today's status across bookings, availability, and payments.
           </p>
+          {error && (
+            <p className="mt-1 text-sm text-amber-600">
+              ⚠️ Using cached data due to API error: {error}
+            </p>
+          )}
         </div>
         <div className="flex gap-2">
           <Button variant="outline" onClick={() => navigate('/calendar')}>
@@ -121,15 +233,17 @@ export default function Dashboard() {
           <DatePicker />
         </div>
         <div className="flex-grow sm:flex-grow-0">
-          <Select>
+          <Select value={selectedResource} onValueChange={setSelectedResource}>
             <SelectTrigger className="w-full sm:w-[180px]">
               <SelectValue placeholder="All Resources" />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Resources</SelectItem>
-              <SelectItem value="hall_a">Hall A</SelectItem>
-              <SelectItem value="hall_b">Hall B</SelectItem>
-              <SelectItem value="main_hall">Main Hall</SelectItem>
+              {dashboardData?.resources?.map((resource) => (
+                <SelectItem key={resource.id} value={resource.id}>
+                  {resource.name}
+                </SelectItem>
+              ))}
             </SelectContent>
           </Select>
         </div>
@@ -138,7 +252,12 @@ export default function Dashboard() {
             <Button variant="outline" size="sm">Tentative</Button>
             <Button variant="outline" size="sm">Block-out</Button>
         </div>
-        <Button variant="link" size="sm" className="text-gray-600">
+        <Button 
+          variant="link" 
+          size="sm" 
+          className="text-gray-600"
+          onClick={() => setSelectedResource('all')}
+        >
           Reset filters
         </Button>
       </section>
@@ -147,32 +266,74 @@ export default function Dashboard() {
       <div className="grid grid-cols-1 gap-6">
         {/* Row A: KPI Cards */}
         <section className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
-          <KpiCard title="Occupancy Today" value={sampleData.kpis.occupancyToday.value} delta={sampleData.kpis.occupancyToday.delta} sparklineData={sampleData.kpis.occupancyToday.sparkline} note={sampleData.kpis.occupancyToday.note} />
-          <KpiCard title="Bookings (This Week)" value={sampleData.kpis.bookingsThisWeek.value} delta={sampleData.kpis.bookingsThisWeek.delta} deltaType="decrease" sparklineData={sampleData.kpis.bookingsThisWeek.sparkline} note={sampleData.kpis.bookingsThisWeek.note} />
-          <KpiCard title="Holds Expiring" value={sampleData.kpis.holdsExpiring.value} delta={sampleData.kpis.holdsExpiring.delta} sparklineData={sampleData.kpis.holdsExpiring.sparkline} note={sampleData.kpis.holdsExpiring.note} />
-          <KpiCard title="Payments Due" value={sampleData.kpis.paymentsDue.value} delta={sampleData.kpis.paymentsDue.delta} sparklineData={sampleData.kpis.paymentsDue.sparkline} note={sampleData.kpis.paymentsDue.note} />
-          <KpiCard title="Cancellations (30d)" value={sampleData.kpis.cancellations30d.value} delta={sampleData.kpis.cancellations30d.delta} deltaType="neutral" sparklineData={sampleData.kpis.cancellations30d.sparkline} note={sampleData.kpis.cancellations30d.note} />
-          <KpiCard title="Revenue (MTD)" value={sampleData.kpis.revenueMtd.value} delta={sampleData.kpis.revenueMtd.delta} sparklineData={sampleData.kpis.revenueMtd.sparkline} note={sampleData.kpis.revenueMtd.note} />
+          <KpiCard 
+            title="Occupancy Today" 
+            value={data.kpis.occupancyToday.value} 
+            delta={data.kpis.occupancyToday.delta} 
+            deltaType={data.kpis.occupancyToday.deltaType}
+            sparklineData={data.kpis.occupancyToday.sparkline} 
+            note={data.kpis.occupancyToday.note} 
+          />
+          <KpiCard 
+            title="Bookings (This Week)" 
+            value={data.kpis.bookingsThisWeek.value} 
+            delta={data.kpis.bookingsThisWeek.delta} 
+            deltaType={data.kpis.bookingsThisWeek.deltaType}
+            sparklineData={data.kpis.bookingsThisWeek.sparkline} 
+            note={data.kpis.bookingsThisWeek.note} 
+          />
+          <KpiCard 
+            title="Holds Expiring" 
+            value={data.kpis.holdsExpiring.value} 
+            delta={data.kpis.holdsExpiring.delta} 
+            deltaType={data.kpis.holdsExpiring.deltaType}
+            sparklineData={data.kpis.holdsExpiring.sparkline} 
+            note={data.kpis.holdsExpiring.note} 
+          />
+          <KpiCard 
+            title="Payments Due" 
+            value={data.kpis.paymentsDue.value} 
+            delta={data.kpis.paymentsDue.delta} 
+            deltaType={data.kpis.paymentsDue.deltaType}
+            sparklineData={data.kpis.paymentsDue.sparkline} 
+            note={data.kpis.paymentsDue.note} 
+          />
+          <KpiCard 
+            title="Cancellations (30d)" 
+            value={data.kpis.cancellations30d.value} 
+            delta={data.kpis.cancellations30d.delta} 
+            deltaType={data.kpis.cancellations30d.deltaType}
+            sparklineData={data.kpis.cancellations30d.sparkline} 
+            note={data.kpis.cancellations30d.note} 
+          />
+          <KpiCard 
+            title="Revenue (MTD)" 
+            value={data.kpis.revenueMtd.value} 
+            delta={data.kpis.revenueMtd.delta} 
+            deltaType={data.kpis.revenueMtd.deltaType}
+            sparklineData={data.kpis.revenueMtd.sparkline} 
+            note={data.kpis.revenueMtd.note} 
+          />
         </section>
 
         {/* Row B: Schedule & Payments */}
         <section className="grid grid-cols-1 gap-6 lg:grid-cols-3">
           <div className="lg:col-span-2">
-            <TodaySchedule schedule={sampleData.scheduleToday} />
+            <TodaySchedule schedule={data.scheduleToday} />
           </div>
           <div>
-            <PaymentsDue payments={sampleData.paymentsDue} />
+            <PaymentsDue payments={data.paymentsDue} />
           </div>
         </section>
 
         {/* Row C: Holds & Alerts */}
         <section className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-          <HoldsExpiring holds={sampleData.holds} />
-          <AlertsTasks alerts={sampleData.alerts} />
+          <HoldsExpiring holds={data.holds} />
+          <AlertsTasks alerts={data.alerts || []} />
         </section>
         
         {/* Row D: Recent Activity */}
-        <RecentActivity activities={sampleData.activity} />
+        <RecentActivity activities={data.activity} />
       </div>
     </main>
   );
