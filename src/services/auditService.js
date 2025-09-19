@@ -1,3 +1,5 @@
+import { formatDateTime } from '../utils/dateTimeUtils';
+
 const API_BASE_URL = 'http://localhost:5000/api';
 
 class AuditService {
@@ -117,7 +119,6 @@ class AuditService {
     
     // If user settings are provided, use the new formatting utilities
     if (userSettings) {
-      const { formatDateTime } = require('../utils/dateTimeUtils');
       return formatDateTime(timestamp, userSettings.dateFormat, userSettings.timeFormat, userSettings.timezone);
     }
     
