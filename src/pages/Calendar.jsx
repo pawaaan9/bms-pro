@@ -94,8 +94,24 @@ export default function Calendar() {
 
   const handleDateChange = (direction) => {
     const newDate = new Date(currentDate);
-    const amount = view === "Month" ? 30 : 7;
-    newDate.setDate(newDate.getDate() + direction * amount);
+    
+    switch (view) {
+      case "Day":
+        newDate.setDate(newDate.getDate() + direction);
+        break;
+      case "Week":
+        newDate.setDate(newDate.getDate() + direction * 7);
+        break;
+      case "Month":
+        newDate.setMonth(newDate.getMonth() + direction);
+        break;
+      case "Resource":
+        newDate.setDate(newDate.getDate() + direction * 7);
+        break;
+      default:
+        newDate.setDate(newDate.getDate() + direction * 7);
+    }
+    
     setCurrentDate(newDate);
   };
 
@@ -125,6 +141,409 @@ export default function Calendar() {
   };
 
   const hours = Array.from({ length: 18 }, (_, i) => i + 6); // 6 AM to 11 PM
+
+  // Render different calendar views
+  const renderCalendarView = () => {
+    switch (view) {
+      case "Day":
+        return renderDayView();
+      case "Week":
+        return renderWeekView();
+      case "Month":
+        return renderMonthView();
+      case "Resource":
+        return renderResourceView();
+      default:
+        return renderWeekView();
+    }
+  };
+
+  // Day View Component
+  const renderDayView = () => {
+    const dayEvents = events.filter((event) => {
+      // Filter by resource if selected
+      if (selectedResource !== "all" && event.selectedHall !== selectedResource) {
+        return false;
+      }
+      
+      // Filter by date
+      const eventDate = new Date(event.bookingDate);
+      const dayDate = new Date(currentDate);
+      const eventDateStr = eventDate.toISOString().split('T')[0];
+      const dayDateStr = dayDate.toISOString().split('T')[0];
+      return eventDateStr === dayDateStr;
+    });
+
+    return (
+      <div className="space-y-4">
+        {/* Day Header */}
+        <div className="text-center">
+          <h2 className="text-2xl font-bold">{format(currentDate, "EEEE, d MMMM yyyy")}</h2>
+        </div>
+
+        {/* Time Slots */}
+        <div className="space-y-1 max-h-96 overflow-y-auto">
+          {hours.map((hour) => {
+            const hourEvents = dayEvents.filter((event) => {
+              const startHour = parseInt(event.startTime.split(":")[0]);
+              const endHour = parseInt(event.endTime.split(":")[0]);
+              return startHour === hour || (startHour < hour && endHour > hour);
+            });
+
+            return (
+              <div key={hour} className="grid grid-cols-2 gap-4 border-b border-gray-100 pb-2">
+                <div className="text-sm text-gray-500 py-2">
+                  {format(new Date(0, 0, 0, hour), "ha")}
+                </div>
+                <div className="min-h-[60px] relative">
+                  {hourEvents.map((event) => (
+                    <button
+                      key={event.id}
+                      className={`w-full p-2 rounded text-xs cursor-pointer text-left ${
+                        event.status === "CONFIRMED" || event.status === "confirmed"
+                          ? "bg-blue-100 border-l-2 border-blue-500 text-blue-800"
+                          : event.status === "PENDING" || event.status === "pending"
+                          ? "bg-orange-100 border-l-2 border-orange-500 text-orange-800"
+                          : event.status === "TENTATIVE" || event.status === "tentative"
+                          ? "bg-yellow-100 border-l-2 border-yellow-500 text-yellow-800 border-dashed"
+                          : "bg-gray-100 border-l-2 border-gray-500 text-gray-800"
+                      }`}
+                      onClick={() => setSelectedEvent(event)}
+                    >
+                      <div className="font-bold truncate">{event.title}</div>
+                      <div className="text-xs opacity-75">
+                        {event.startTime} - {event.endTime}
+                      </div>
+                      {event.guestCount && (
+                        <div className="text-xs opacity-60">
+                          {event.guestCount} guests
+                        </div>
+                      )}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    );
+  };
+
+  // Week View Component (existing logic)
+  const renderWeekView = () => {
+    return (
+      <div className="space-y-4">
+        {/* Day Headers */}
+        <div className="grid grid-cols-8 gap-2">
+          <div className="font-medium text-sm text-gray-500">Time</div>
+          {days.map((day, index) => (
+            <div key={index} className="text-center">
+              <div className="text-sm text-gray-500">
+                {format(day, "EEE")}
+              </div>
+              <div className="text-lg font-bold">
+                {format(day, "d")}
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Time Slots with Events */}
+        <div className="space-y-1 max-h-96 overflow-y-auto">
+          {hours.map((hour) => (
+            <div key={hour} className="grid grid-cols-8 gap-2 border-b border-gray-100 pb-2">
+              <div className="text-sm text-gray-500 py-2">
+                {format(new Date(0, 0, 0, hour), "ha")}
+              </div>
+              {days.map((day, dayIndex) => {
+                // Get all events for this day
+                const dayEvents = events.filter((event) => {
+                  // Filter by resource if selected
+                  if (selectedResource !== "all" && event.selectedHall !== selectedResource) {
+                    return false;
+                  }
+                  
+                  // Filter by date
+                  const eventDate = new Date(event.bookingDate);
+                  const dayDate = new Date(day);
+                  const eventDateStr = eventDate.toISOString().split('T')[0];
+                  const dayDateStr = dayDate.toISOString().split('T')[0];
+                  const isSameDate = eventDateStr === dayDateStr;
+                  
+                  return isSameDate;
+                });
+
+                // Filter events that should appear in this hour slot
+                const hourEvents = dayEvents.filter((event) => {
+                  const startHour = parseInt(event.startTime.split(":")[0]);
+                  const startMinute = parseInt(event.startTime.split(":")[1]);
+                  const endHour = parseInt(event.endTime.split(":")[0]);
+                  const endMinute = parseInt(event.endTime.split(":")[1]);
+                  
+                  // Event starts in this hour OR event is ongoing through this hour
+                  const startsInThisHour = startHour === hour;
+                  const ongoingThroughThisHour = startHour < hour && endHour > hour;
+                  const startsEarlierAndEndsInThisHour = startHour < hour && endHour === hour;
+                  
+                  return startsInThisHour || ongoingThroughThisHour || startsEarlierAndEndsInThisHour;
+                });
+
+                return (
+                  <div
+                    key={dayIndex}
+                    className="min-h-[60px] border-l border-gray-100 px-1 relative"
+                  >
+                    {hourEvents.map((event) => {
+                      const startHour = parseInt(event.startTime.split(":")[0]);
+                      const startMinute = parseInt(event.startTime.split(":")[1]);
+                      const endHour = parseInt(event.endTime.split(":")[0]);
+                      const endMinute = parseInt(event.endTime.split(":")[1]);
+                      
+                      // Calculate if this is the starting hour for the event
+                      const isStartingHour = startHour === hour;
+                      
+                      // Calculate height based on duration (minimum 1 hour slot)
+                      const durationHours = endHour - startHour + (endMinute - startMinute) / 60;
+                      const height = Math.max(1, Math.ceil(durationHours)) * 60; // 60px per hour
+                      
+                      // Calculate top offset if event doesn't start at the top of the hour
+                      const topOffset = isStartingHour ? (startMinute / 60) * 60 : 0;
+                      
+                      return (
+                        <button
+                          key={event.id}
+                          className={`absolute left-1 right-1 p-2 rounded text-xs cursor-pointer text-left z-10 ${
+                            event.status === "CONFIRMED" || event.status === "confirmed"
+                              ? "bg-blue-100 border-l-2 border-blue-500 text-blue-800"
+                              : event.status === "PENDING" || event.status === "pending"
+                              ? "bg-orange-100 border-l-2 border-orange-500 text-orange-800"
+                              : event.status === "TENTATIVE" || event.status === "tentative"
+                              ? "bg-yellow-100 border-l-2 border-yellow-500 text-yellow-800 border-dashed"
+                              : event.status === "CANCELLED" || event.status === "cancelled"
+                              ? "bg-red-100 border-l-2 border-red-500 text-red-800"
+                              : event.status === "COMPLETED" || event.status === "completed"
+                              ? "bg-green-100 border-l-2 border-green-500 text-green-800"
+                              : "bg-gray-100 border-l-2 border-gray-500 text-gray-800"
+                          }`}
+                          style={{
+                            top: `${topOffset}px`,
+                            height: `${height}px`,
+                            minHeight: '60px'
+                          }}
+                          onClick={() => setSelectedEvent(event)}
+                        >
+                          <div className="font-bold truncate">
+                            {event.title}
+                          </div>
+                          <div className="text-xs opacity-75">
+                            {event.startTime} - {event.endTime}
+                          </div>
+                          {event.guestCount && (
+                            <div className="text-xs opacity-60">
+                              {event.guestCount} guests
+                            </div>
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+                );
+              })}
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  };
+
+  // Month View Component
+  const renderMonthView = () => {
+    const monthStart = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
+    const monthEnd = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0);
+    const startDate = startOfWeek(monthStart, { weekStartsOn: 1 });
+    const endDate = startOfWeek(monthEnd, { weekStartsOn: 1 });
+    
+    const monthDays = [];
+    const current = new Date(startDate);
+    while (current <= endDate) {
+      monthDays.push(new Date(current));
+      current.setDate(current.getDate() + 1);
+    }
+
+    const getEventsForDay = (day) => {
+      return events.filter((event) => {
+        if (selectedResource !== "all" && event.selectedHall !== selectedResource) {
+          return false;
+        }
+        
+        const eventDate = new Date(event.bookingDate);
+        const dayDate = new Date(day);
+        const eventDateStr = eventDate.toISOString().split('T')[0];
+        const dayDateStr = dayDate.toISOString().split('T')[0];
+        return eventDateStr === dayDateStr;
+      });
+    };
+
+    return (
+      <div className="space-y-4">
+        {/* Month Header */}
+        <div className="text-center">
+          <h2 className="text-2xl font-bold">{format(currentDate, "MMMM yyyy")}</h2>
+        </div>
+
+        {/* Day Headers */}
+        <div className="grid grid-cols-7 gap-1">
+          {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((day) => (
+            <div key={day} className="text-center font-medium text-sm text-gray-500 p-2">
+              {day}
+            </div>
+          ))}
+        </div>
+
+        {/* Calendar Grid */}
+        <div className="grid grid-cols-7 gap-1">
+          {monthDays.map((day, index) => {
+            const dayEvents = getEventsForDay(day);
+            const isCurrentMonth = day.getMonth() === currentDate.getMonth();
+            const isToday = day.toDateString() === new Date().toDateString();
+            
+            return (
+              <div
+                key={index}
+                className={`min-h-[120px] border border-gray-200 p-2 ${
+                  isCurrentMonth ? 'bg-white' : 'bg-gray-50'
+                } ${isToday ? 'bg-blue-50 border-blue-300' : ''}`}
+              >
+                <div className={`text-sm font-medium mb-1 ${
+                  isCurrentMonth ? 'text-gray-900' : 'text-gray-400'
+                } ${isToday ? 'text-blue-600' : ''}`}>
+                  {format(day, 'd')}
+                </div>
+                <div className="space-y-1">
+                  {dayEvents.slice(0, 3).map((event) => (
+                    <div
+                      key={event.id}
+                      className={`text-xs p-1 rounded cursor-pointer truncate ${
+                        event.status === "CONFIRMED" || event.status === "confirmed"
+                          ? "bg-blue-100 text-blue-800"
+                          : event.status === "PENDING" || event.status === "pending"
+                          ? "bg-orange-100 text-orange-800"
+                          : event.status === "TENTATIVE" || event.status === "tentative"
+                          ? "bg-yellow-100 text-yellow-800"
+                          : "bg-gray-100 text-gray-800"
+                      }`}
+                      onClick={() => setSelectedEvent(event)}
+                    >
+                      {event.title}
+                    </div>
+                  ))}
+                  {dayEvents.length > 3 && (
+                    <div className="text-xs text-gray-500">
+                      +{dayEvents.length - 3} more
+                    </div>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    );
+  };
+
+  // Resource View Component
+  const renderResourceView = () => {
+    const filteredResources = selectedResource !== "all" 
+      ? resources.filter(r => r.id === selectedResource)
+      : resources;
+
+    return (
+      <div className="space-y-4">
+        {/* Resource Headers */}
+        <div className="grid grid-cols-8 gap-2">
+          <div className="font-medium text-sm text-gray-500">Time</div>
+          {filteredResources.map((resource) => (
+            <div key={resource.id} className="text-center">
+              <div className="text-sm text-gray-500">
+                {resource.type}
+              </div>
+              <div className="text-lg font-bold">
+                {resource.name}
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Time Slots with Events */}
+        <div className="space-y-1 max-h-96 overflow-y-auto">
+          {hours.map((hour) => (
+            <div key={hour} className="grid grid-cols-8 gap-2 border-b border-gray-100 pb-2">
+              <div className="text-sm text-gray-500 py-2">
+                {format(new Date(0, 0, 0, hour), "ha")}
+              </div>
+              {filteredResources.map((resource) => {
+                // Get events for this resource
+                const resourceEvents = events.filter((event) => {
+                  if (event.selectedHall !== resource.id && event.resourceId !== resource.id) {
+                    return false;
+                  }
+                  
+                  // Filter by date (current week)
+                  const eventDate = new Date(event.bookingDate);
+                  const weekStart = startOfWeek(currentDate, { weekStartsOn: 1 });
+                  const weekEnd = new Date(weekStart);
+                  weekEnd.setDate(weekEnd.getDate() + 6);
+                  
+                  return eventDate >= weekStart && eventDate <= weekEnd;
+                });
+
+                // Filter events that should appear in this hour slot
+                const hourEvents = resourceEvents.filter((event) => {
+                  const startHour = parseInt(event.startTime.split(":")[0]);
+                  const endHour = parseInt(event.endTime.split(":")[0]);
+                  return startHour === hour || (startHour < hour && endHour > hour);
+                });
+
+                return (
+                  <div
+                    key={resource.id}
+                    className="min-h-[60px] border-l border-gray-100 px-1 relative"
+                  >
+                    {hourEvents.map((event) => (
+                      <button
+                        key={event.id}
+                        className={`w-full p-2 rounded text-xs cursor-pointer text-left ${
+                          event.status === "CONFIRMED" || event.status === "confirmed"
+                            ? "bg-blue-100 border-l-2 border-blue-500 text-blue-800"
+                            : event.status === "PENDING" || event.status === "pending"
+                            ? "bg-orange-100 border-l-2 border-orange-500 text-orange-800"
+                            : event.status === "TENTATIVE" || event.status === "tentative"
+                            ? "bg-yellow-100 border-l-2 border-yellow-500 text-yellow-800 border-dashed"
+                            : "bg-gray-100 border-l-2 border-gray-500 text-gray-800"
+                        }`}
+                        onClick={() => setSelectedEvent(event)}
+                      >
+                        <div className="font-bold truncate">{event.title}</div>
+                        <div className="text-xs opacity-75">
+                          {event.startTime} - {event.endTime}
+                        </div>
+                        {event.guestCount && (
+                          <div className="text-xs opacity-60">
+                            {event.guestCount} guests
+                          </div>
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                );
+              })}
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  };
 
   return (
     <main className="space-y-6">
@@ -196,7 +615,7 @@ export default function Calendar() {
               >
                 <ChevronLeft className="h-4 w-4" />
               </Button>
-              <Button variant="outline" onClick={() => handleDateChange(0)}>
+              <Button variant="outline" onClick={() => setCurrentDate(new Date())}>
                 Today
               </Button>
               <Button
@@ -249,7 +668,7 @@ export default function Calendar() {
         <div className="lg:col-span-3">
           <Card>
             <CardHeader>
-              <CardTitle>Week View</CardTitle>
+              <CardTitle>{view} View</CardTitle>
             </CardHeader>
             <CardContent>
               {loading ? (
@@ -271,152 +690,7 @@ export default function Calendar() {
                   </div>
                 </div>
               ) : (
-              <div className="space-y-4">
-                {/* Day Headers */}
-                <div className="grid grid-cols-8 gap-2">
-                  <div className="font-medium text-sm text-gray-500">Time</div>
-                  {days.map((day, index) => (
-                    <div key={index} className="text-center">
-                      <div className="text-sm text-gray-500">
-                        {format(day, "EEE")}
-                      </div>
-                      <div className="text-lg font-bold">
-                        {format(day, "d")}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-
-                {/* Time Slots with Events */}
-                <div
-                  className="space-y-1 max-h-96 overflow-y-auto"
-                  role="grid"
-                  aria-label="Weekly calendar grid"
-                >
-                  {hours.map((hour) => (
-                    <div
-                      key={hour}
-                      className="grid grid-cols-8 gap-2 border-b border-gray-100 pb-2"
-                      role="row"
-                    >
-                      <div
-                        className="text-sm text-gray-500 py-2"
-                        role="rowheader"
-                      >
-                        {format(new Date(0, 0, 0, hour), "ha")}
-                      </div>
-                      {days.map((day, dayIndex) => {
-                        // Get all events for this day
-                        const dayEvents = events.filter((event) => {
-                          // Filter by resource if selected
-                          if (selectedResource !== "all" && event.selectedHall !== selectedResource) {
-                            return false;
-                          }
-                          
-                          // Filter by date
-                          const eventDate = new Date(event.bookingDate);
-                          const dayDate = new Date(day);
-                          const eventDateStr = eventDate.toISOString().split('T')[0];
-                          const dayDateStr = dayDate.toISOString().split('T')[0];
-                          const isSameDate = eventDateStr === dayDateStr;
-                          
-                          return isSameDate;
-                        });
-
-                        // Filter events that should appear in this hour slot
-                        const hourEvents = dayEvents.filter((event) => {
-                          const startHour = parseInt(event.startTime.split(":")[0]);
-                          const startMinute = parseInt(event.startTime.split(":")[1]);
-                          const endHour = parseInt(event.endTime.split(":")[0]);
-                          const endMinute = parseInt(event.endTime.split(":")[1]);
-                          
-                          // Event starts in this hour OR event is ongoing through this hour
-                          const startsInThisHour = startHour === hour;
-                          const ongoingThroughThisHour = startHour < hour && endHour > hour;
-                          const startsEarlierAndEndsInThisHour = startHour < hour && endHour === hour;
-                          
-                          return startsInThisHour || ongoingThroughThisHour || startsEarlierAndEndsInThisHour;
-                        });
-
-
-                        return (
-                          <div
-                            key={dayIndex}
-                            className="min-h-[60px] border-l border-gray-100 px-1 relative"
-                            role="gridcell"
-                            tabIndex={0}
-                            aria-label={`${format(
-                              day,
-                              "EEEE d MMMM"
-                            )}, ${format(new Date(0, 0, 0, hour), "ha")}`}
-                            onKeyDown={(e) => {
-                              if (e.key === "Enter" || e.key === " ") {
-                                e.preventDefault();
-                                // Handle event creation
-                              }
-                            }}
-                          >
-                            {hourEvents.map((event) => {
-                              const startHour = parseInt(event.startTime.split(":")[0]);
-                              const startMinute = parseInt(event.startTime.split(":")[1]);
-                              const endHour = parseInt(event.endTime.split(":")[0]);
-                              const endMinute = parseInt(event.endTime.split(":")[1]);
-                              
-                              // Calculate if this is the starting hour for the event
-                              const isStartingHour = startHour === hour;
-                              
-                              // Calculate height based on duration (minimum 1 hour slot)
-                              const durationHours = endHour - startHour + (endMinute - startMinute) / 60;
-                              const height = Math.max(1, Math.ceil(durationHours)) * 60; // 60px per hour
-                              
-                              // Calculate top offset if event doesn't start at the top of the hour
-                              const topOffset = isStartingHour ? (startMinute / 60) * 60 : 0;
-                              
-                              return (
-                                <button
-                                  key={event.id}
-                                  className={`absolute left-1 right-1 p-2 rounded text-xs cursor-pointer text-left z-10 ${
-                                    event.status === "CONFIRMED" || event.status === "confirmed"
-                                      ? "bg-blue-100 border-l-2 border-blue-500 text-blue-800"
-                                      : event.status === "PENDING" || event.status === "pending"
-                                      ? "bg-orange-100 border-l-2 border-orange-500 text-orange-800"
-                                      : event.status === "TENTATIVE" || event.status === "tentative"
-                                      ? "bg-yellow-100 border-l-2 border-yellow-500 text-yellow-800 border-dashed"
-                                      : event.status === "CANCELLED" || event.status === "cancelled"
-                                      ? "bg-red-100 border-l-2 border-red-500 text-red-800"
-                                      : event.status === "COMPLETED" || event.status === "completed"
-                                      ? "bg-green-100 border-l-2 border-green-500 text-green-800"
-                                      : "bg-gray-100 border-l-2 border-gray-500 text-gray-800"
-                                  }`}
-                                  style={{
-                                    top: `${topOffset}px`,
-                                    height: `${height}px`,
-                                    minHeight: '60px'
-                                  }}
-                                  onClick={() => setSelectedEvent(event)}
-                                  aria-label={`${event.title}, ${event.status}, ${event.startTime} to ${event.endTime}`}
-                                >
-                                  <div className="font-bold truncate">
-                                    {event.title}
-                                  </div>
-                                  <div className="text-xs opacity-75">
-                                    {event.startTime} - {event.endTime}
-                                  </div>
-                                  {event.guestCount && (
-                                    <div className="text-xs opacity-60">
-                                      {event.guestCount} guests
-                                    </div>
-                                  )}
-                                </button>
-                              );
-                            })}
-                          </div>
-                        );
-                      })}
-                    </div>
-                  ))}
-                </div>
-              </div>
+                renderCalendarView()
               )}
             </CardContent>
           </Card>
