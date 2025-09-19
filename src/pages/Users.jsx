@@ -47,8 +47,10 @@ export default function Users() {
       fetch('http://localhost:5000/api/users')
         .then(res => res.json())
         .then(data => {
-          setUsers(data);
-          setFiltered(data);
+          // Filter out sub_users - super admin should only see hall_owners and super_admins
+          const filteredData = data.filter(user => user.role !== 'sub_user');
+          setUsers(filteredData);
+          setFiltered(filteredData);
           setLoading(false);
         })
         .catch(err => {
@@ -321,7 +323,7 @@ export default function Users() {
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Users</h1>
           <p className="text-muted-foreground mt-1">
-            Manage user accounts, roles, and hall assignments.
+            Manage hall owner and super admin accounts.
           </p>
         </div>
         <Button onClick={handleAddUser} className="flex items-center gap-2">
@@ -341,21 +343,7 @@ export default function Users() {
       )}
 
       {/* Statistics Box */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Card className="bg-gradient-to-r from-blue-50 to-blue-100 border-blue-200">
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-blue-600">Total Users</p>
-                <p className="text-2xl font-bold text-blue-900">{users.length}</p>
-              </div>
-              <div className="p-2 bg-blue-500 rounded-lg">
-                <UsersIcon className="h-5 w-5 text-white" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <Card className="bg-gradient-to-r from-green-50 to-green-100 border-green-200">
           <CardContent className="p-4">
             <div className="flex items-center justify-between">

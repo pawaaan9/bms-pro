@@ -30,7 +30,8 @@ export default function SettingsRoles() {
     name: '',
     email: '',
     password: '',
-    permissions: []
+    permissions: [],
+    status: 'active'
   });
   const [editingUser, setEditingUser] = useState({
     id: '',
@@ -77,7 +78,12 @@ export default function SettingsRoles() {
 
       if (response.ok) {
         const data = await response.json();
-        setSubUsers(data);
+        // Ensure all sub-users have a status, default to 'active' if not set
+        const usersWithStatus = data.map(user => ({
+          ...user,
+          status: user.status || 'active'
+        }));
+        setSubUsers(usersWithStatus);
       } else {
         setError('Failed to fetch sub-users');
       }
@@ -107,14 +113,15 @@ export default function SettingsRoles() {
           password: newUser.password,
           role: 'sub_user',
           parentUserId: user.id,
-          permissions: newUser.permissions
+          permissions: newUser.permissions,
+          status: newUser.status
         })
       });
 
       if (response.ok) {
         setSuccessMessage('Sub-user created successfully!');
         setTimeout(() => setSuccessMessage(''), 3000);
-        setNewUser({ name: '', email: '', password: '', permissions: [] });
+        setNewUser({ name: '', email: '', password: '', permissions: [], status: 'active' });
         setAddUserDialogOpen(false);
         fetchSubUsers(); // Refresh the list
       } else {
@@ -371,8 +378,14 @@ export default function SettingsRoles() {
                       {subUser.email}
                     </TableCell>
                     <TableCell>
-                      <Badge variant={subUser.status === 'active' ? 'default' : 'secondary'}>
-                        {subUser.status}
+                      <Badge 
+                        variant={subUser.status === 'active' ? 'default' : 'secondary'}
+                        className={subUser.status === 'active' 
+                          ? 'bg-green-100 text-green-800 border-green-200' 
+                          : 'bg-gray-100 text-gray-800 border-gray-200'
+                        }
+                      >
+                        {subUser.status === 'active' ? 'Active' : 'Inactive'}
                       </Badge>
                     </TableCell>
                     <TableCell>

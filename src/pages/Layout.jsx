@@ -165,7 +165,15 @@ export default function Layout({ children, currentPageName }) {
 
   // Helper function to check if user can access a navigation item
   const canAccessNavItem = (item) => {
-    // Super admins and hall owners have full access
+    // Super admin only pages
+    const superAdminOnlyPages = ['Users', 'Audit Log'];
+    
+    // If this is a super admin only page, only super admins can access it
+    if (superAdminOnlyPages.includes(item.title)) {
+      return isSuperAdmin();
+    }
+    
+    // Super admins and hall owners have full access to other pages
     if (isSuperAdmin() || isHallOwner()) {
       return true;
     }
@@ -181,7 +189,15 @@ export default function Layout({ children, currentPageName }) {
 
   // Helper function to check if user can access a child navigation item
   const canAccessChildNavItem = (child) => {
-    // Super admins and hall owners have full access
+    // Super admin only pages
+    const superAdminOnlyPages = ['Users', 'Audit Log'];
+    
+    // If this is a super admin only page, only super admins can access it
+    if (superAdminOnlyPages.includes(child.title)) {
+      return isSuperAdmin();
+    }
+    
+    // Super admins and hall owners have full access to other pages
     if (isSuperAdmin() || isHallOwner()) {
       return true;
     }
