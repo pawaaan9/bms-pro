@@ -15,6 +15,12 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
   const [token, setToken] = useState(null);
   const [parentUserData, setParentUserData] = useState(null);
+  const [userSettings, setUserSettings] = useState({
+    timezone: 'Australia/Sydney',
+    dateFormat: 'DD/MM/YYYY',
+    timeFormat: '12h',
+    currency: 'AUD'
+  });
 
   const fetchUserProfile = async (token) => {
     try {
@@ -59,6 +65,29 @@ export const AuthProvider = ({ children }) => {
     return null;
   };
 
+  const fetchUserSettings = async (token) => {
+    try {
+      const response = await fetch('http://localhost:5000/api/users/settings', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      if (response.ok) {
+        const settings = await response.json();
+        setUserSettings(settings);
+        console.log('User settings fetched:', settings);
+        return settings;
+      } else {
+        console.error('Failed to fetch settings:', response.status, response.statusText);
+      }
+    } catch (error) {
+      console.error('Failed to fetch user settings:', error);
+    }
+    return null;
+  };
+
   useEffect(() => {
     // Check if user is logged in on app start
     const storedToken = localStorage.getItem('token');
@@ -66,8 +95,11 @@ export const AuthProvider = ({ children }) => {
     
     if (storedToken && role) {
       setToken(storedToken);
-      // Fetch user profile data
-      fetchUserProfile(storedToken).then(userData => {
+      // Fetch user profile data and settings
+      Promise.all([
+        fetchUserProfile(storedToken),
+        fetchUserSettings(storedToken)
+      ]).then(([userData, settings]) => {
         if (userData) {
           setUser({ role, ...userData });
         } else {
@@ -85,12 +117,23 @@ export const AuthProvider = ({ children }) => {
     localStorage.setItem('role', role);
     setToken(authToken);
     
-    // Fetch user profile data
-    const userData = await fetchUserProfile(authToken);
+    // Fetch user profile data and settings
+    const [userData, settings] = await Promise.all([
+      fetchUserProfile(authToken),
+      fetchUserSettings(authToken)
+    ]);
+    
     if (userData) {
       setUser({ role, ...userData });
     } else {
       setUser({ role });
+    }
+  };
+
+  const refreshSettings = async () => {
+    const token = getToken();
+    if (token) {
+      await fetchUserSettings(token);
     }
   };
 
@@ -100,6 +143,12 @@ export const AuthProvider = ({ children }) => {
     setUser(null);
     setToken(null);
     setParentUserData(null);
+    setUserSettings({
+      timezone: 'Australia/Sydney',
+      dateFormat: 'DD/MM/YYYY',
+      timeFormat: '12h',
+      currency: 'AUD'
+    });
     // Redirect to login page and prevent back navigation
     window.location.replace('/login');
   };
@@ -176,9 +225,11 @@ export const AuthProvider = ({ children }) => {
     user,
     token,
     parentUserData,
+    userSettings,
     getToken,
     login,
     logout,
+    refreshSettings,
     isSuperAdmin,
     isHallOwner,
     isSubUser,

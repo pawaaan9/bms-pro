@@ -10,7 +10,7 @@ import { Badge } from "../components/ui/badge";
 import { Calendar, Filter, Download, RefreshCw, Search, Eye, ChevronLeft, ChevronRight, Users } from "lucide-react";
 
 export default function Audit() {
-  const { user, isSuperAdmin, isHallOwner } = useAuth();
+  const { user, isSuperAdmin, isHallOwner, userSettings } = useAuth();
   const [auditLogs, setAuditLogs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -133,7 +133,7 @@ export default function Audit() {
     const csvContent = [
       ['Timestamp', 'User', 'Action', 'Target', 'IP Address', 'Details'],
       ...auditLogs.map(log => [
-        AuditService.formatTimestamp(log.timestamp),
+        AuditService.formatTimestamp(log.timestamp, userSettings),
         log.userEmail,
         AuditService.formatAction(log.action),
         log.target,
@@ -477,7 +477,7 @@ export default function Audit() {
                 {filteredLogs.map((log) => (
                   <TableRow key={log.id} className="hover:bg-muted/50">
                     <TableCell className="font-mono text-sm">
-                      {AuditService.formatTimestamp(log.timestamp)}
+                      {AuditService.formatTimestamp(log.timestamp, userSettings)}
                     </TableCell>
                     <TableCell>
                       <div>
@@ -577,7 +577,7 @@ export default function Audit() {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="text-sm font-medium text-muted-foreground">Timestamp</label>
-                  <p className="font-mono">{AuditService.formatTimestamp(selectedLog.timestamp)}</p>
+                  <p className="font-mono">{AuditService.formatTimestamp(selectedLog.timestamp, userSettings)}</p>
                 </div>
                 <div>
                   <label className="text-sm font-medium text-muted-foreground">IP Address</label>

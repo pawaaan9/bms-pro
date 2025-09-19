@@ -30,6 +30,7 @@ import { DatePicker } from '@/components/ui/date-picker';
 import { useAuth } from '../contexts/AuthContext';
 import { fetchDashboardData } from '../services/dashboardService';
 import { getDataUserId } from '../services/userService';
+import { formatCurrency } from '../utils/dateTimeUtils';
 
 const sampleData = {
   kpis: {
@@ -100,11 +101,21 @@ const sampleData = {
 
 export default function Dashboard() {
   const navigate = useNavigate();
-  const { token, getToken, user, parentUserData, loading: authLoading } = useAuth();
+  const { token, getToken, user, parentUserData, loading: authLoading, userSettings } = useAuth();
   const [dashboardData, setDashboardData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [selectedResource, setSelectedResource] = useState('all');
+
+  // Helper function to format currency values
+  const formatCurrencyValue = (amount) => {
+    if (typeof amount === 'string' && amount.includes('$')) {
+      // Extract numeric value from string like "$1,420 AUD"
+      const numericValue = parseFloat(amount.replace(/[$,AUD]/g, ''));
+      return formatCurrency(numericValue, userSettings?.currency || 'AUD');
+    }
+    return amount;
+  };
 
   useEffect(() => {
     const loadDashboardData = async () => {
@@ -296,7 +307,7 @@ export default function Dashboard() {
           />
           <KpiCard 
             title="Payments Due" 
-            value={data.kpis.paymentsDue.value} 
+            value={formatCurrencyValue(data.kpis.paymentsDue.value)} 
             delta={data.kpis.paymentsDue.delta} 
             deltaType={data.kpis.paymentsDue.deltaType}
             sparklineData={data.kpis.paymentsDue.sparkline} 
@@ -312,7 +323,7 @@ export default function Dashboard() {
           />
           <KpiCard 
             title="Revenue (MTD)" 
-            value={data.kpis.revenueMtd.value} 
+            value={formatCurrencyValue(data.kpis.revenueMtd.value)} 
             delta={data.kpis.revenueMtd.delta} 
             deltaType={data.kpis.revenueMtd.deltaType}
             sparklineData={data.kpis.revenueMtd.sparkline} 
@@ -326,7 +337,7 @@ export default function Dashboard() {
             <TodaySchedule schedule={data.scheduleToday} />
           </div>
           <div>
-            <PaymentsDue payments={data.paymentsDue} />
+            <PaymentsDue payments={data.paymentsDue} userSettings={userSettings} />
           </div>
         </section>
 

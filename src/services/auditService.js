@@ -112,9 +112,16 @@ class AuditService {
     }
   }
   
-  static formatTimestamp(timestamp) {
+  static formatTimestamp(timestamp, userSettings = null) {
     if (!timestamp) return 'N/A';
     
+    // If user settings are provided, use the new formatting utilities
+    if (userSettings) {
+      const { formatDateTime } = require('../utils/dateTimeUtils');
+      return formatDateTime(timestamp, userSettings.dateFormat, userSettings.timeFormat, userSettings.timezone);
+    }
+    
+    // Fallback to original formatting
     const date = timestamp instanceof Date ? timestamp : new Date(timestamp);
     return date.toLocaleString('en-US', {
       year: 'numeric',

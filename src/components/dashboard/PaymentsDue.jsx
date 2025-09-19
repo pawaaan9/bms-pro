@@ -3,8 +3,9 @@ import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { DollarSign, Send, Banknote, MoreVertical } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { formatCurrency } from '../../utils/dateTimeUtils';
 
-const PaymentsDue = ({ payments }) => {
+const PaymentsDue = ({ payments, userSettings }) => {
   const sortedPayments = [...payments].sort((a, b) => {
     if (a.status === 'Overdue' && b.status !== 'Overdue') return -1;
     if (a.status !== 'Overdue' && b.status === 'Overdue') return 1;
@@ -37,7 +38,9 @@ const PaymentsDue = ({ payments }) => {
                   </div>
                 </div>
                 <div className="text-right">
-                  <p className="font-bold text-lg text-gray-900">${payment.amountAud.toLocaleString('en-AU')}</p>
+                  <p className="font-bold text-lg text-gray-900">
+                    {formatCurrency(payment.amountAud, userSettings?.currency || 'AUD')}
+                  </p>
                   <div className="flex gap-1 mt-2">
                     <Button variant="ghost" size="icon" className="h-8 w-8" aria-label="Send Payment Link">
                       <Send className="h-4 w-4" />
