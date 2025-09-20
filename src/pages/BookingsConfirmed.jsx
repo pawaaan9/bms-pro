@@ -232,9 +232,15 @@ export default function BookingsConfirmed() {
         throw new Error('No authentication token found');
       }
 
-      console.log('Fetching confirmed bookings for user ID:', user.id);
+      // Determine the correct hall owner ID to fetch bookings for
+      let hallOwnerId = user.id;
+      if (user.role === 'sub_user' && user.parentUserId) {
+        hallOwnerId = user.parentUserId;
+      }
+
+      console.log('Fetching confirmed bookings for hall owner ID:', hallOwnerId);
       
-      const response = await fetch(`http://localhost:5000/api/bookings/hall-owner/${user.id}`, {
+      const response = await fetch(`http://localhost:5000/api/bookings/hall-owner/${hallOwnerId}`, {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${token}`,

@@ -34,6 +34,7 @@ export const AuthProvider = ({ children }) => {
       if (response.ok) {
         const userData = await response.json();
         console.log('User profile fetched:', userData); // Debug log
+        console.log('User permissions:', userData.permissions); // Debug permissions
         
         // If this is a sub-user, fetch parent user data
         if (userData.role === 'sub_user' && userData.parentUserId) {
@@ -101,7 +102,9 @@ export const AuthProvider = ({ children }) => {
         fetchUserSettings(storedToken)
       ]).then(([userData, settings]) => {
         if (userData) {
-          setUser({ role, ...userData });
+          const finalUser = { role, ...userData };
+          console.log('Initial user loading - Setting user object:', finalUser);
+          setUser(finalUser);
         } else {
           setUser({ role });
         }
@@ -124,7 +127,9 @@ export const AuthProvider = ({ children }) => {
     ]);
     
     if (userData) {
-      setUser({ role, ...userData });
+      const finalUser = { role, ...userData };
+      console.log('Setting user object:', finalUser);
+      setUser(finalUser);
     } else {
       setUser({ role });
     }
@@ -173,7 +178,13 @@ export const AuthProvider = ({ children }) => {
     
     // Sub-users need specific permission
     if (isSubUser()) {
-      return user?.permissions?.includes(permission) || false;
+      const hasAccess = user?.permissions?.includes(permission) || false;
+      console.log(`Permission check for ${permission}:`, {
+        userPermissions: user?.permissions,
+        hasAccess,
+        userRole: user?.role
+      });
+      return hasAccess;
     }
     
     return false;

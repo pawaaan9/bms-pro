@@ -25,10 +25,40 @@ const ProtectedRoute = ({ children, requiredPermission }) => {
 
   // Check permission if required
   if (requiredPermission) {
-    const pageName = location.pathname.split('/').pop();
-    const formattedPageName = pageName.charAt(0).toUpperCase() + pageName.slice(1);
+    // Map URL path to the correct page name that matches the permission system
+    const getPageNameFromPath = (pathname) => {
+      const path = pathname.split('/').pop();
+      // Handle special cases and ensure proper capitalization
+      const pageNameMap = {
+        'bookingsall': 'BookingsAll',
+        'bookingspending': 'BookingsPending', 
+        'bookingsholds': 'BookingsHolds',
+        'bookingsconfirmed': 'BookingsConfirmed',
+        'bookingscompleted': 'BookingsCompleted',
+        'bookingscancelled': 'BookingsCancelled',
+        'resourceshalls': 'ResourcesHalls',
+        'resourcesholidays': 'ResourcesHolidays',
+        'resourcesblockouts': 'ResourcesBlockouts',
+        'pricingratecards': 'PricingRatecards',
+        'pricingaddons': 'PricingAddons',
+        'commsmessages': 'CommsMessages',
+        'commstemplates': 'CommsTemplates',
+        'settingsgeneral': 'SettingsGeneral',
+        'settingspayments': 'SettingsPayments',
+        'settingstaxes': 'SettingsTaxes',
+        'settingsavailability': 'SettingsAvailability',
+        'settingspolicies': 'SettingsPolicies',
+        'settingsroles': 'SettingsRoles',
+        'settingsintegrations': 'SettingsIntegrations',
+        'settingsprivacy': 'SettingsPrivacy'
+      };
+      
+      return pageNameMap[path.toLowerCase()] || path.charAt(0).toUpperCase() + path.slice(1);
+    };
     
-    if (!canAccessPage(formattedPageName)) {
+    const pageName = getPageNameFromPath(location.pathname);
+    
+    if (!canAccessPage(pageName)) {
       return (
         <div className="min-h-screen flex items-center justify-center bg-gray-50">
           <div className="text-center">

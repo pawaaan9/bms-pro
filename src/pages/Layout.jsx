@@ -185,8 +185,23 @@ export default function Layout({ children, currentPageName }) {
     
     // Sub-users need specific permissions
     if (isSubUser()) {
-      // Check if user has permission for this page
-      return canAccessPage(item.title);
+      // For parent items with children, check if user can access any child
+      if (item.children && item.children.length > 0) {
+        const canAccess = item.children.some(child => canAccessChildNavItem(child));
+        console.log(`Navigation access for ${item.title}:`, {
+          hasChildren: true,
+          canAccess,
+          children: item.children.map(child => ({ title: child.title, canAccess: canAccessChildNavItem(child) }))
+        });
+        return canAccess;
+      }
+      // For single pages, check if user has permission for this page
+      const canAccess = canAccessPage(item.title);
+      console.log(`Navigation access for ${item.title}:`, {
+        hasChildren: false,
+        canAccess
+      });
+      return canAccess;
     }
     
     return false;
@@ -214,7 +229,34 @@ export default function Layout({ children, currentPageName }) {
     
     // Sub-users need specific permissions
     if (isSubUser()) {
-      return canAccessPage(child.title);
+      // Map child titles to their corresponding page names for permission checking
+      const childToPageMap = {
+        'All': 'BookingsAll',
+        'Pending Review': 'BookingsPending',
+        'Holds (Tentative)': 'BookingsHolds',
+        'Confirmed': 'BookingsConfirmed',
+        'Completed': 'BookingsCompleted',
+        'Cancelled': 'BookingsCancelled',
+        'My Resources': 'Resources',
+        'Halls/Rooms': 'ResourcesHalls',
+        'Public Holidays': 'ResourcesHolidays',
+        'Block-outs': 'ResourcesBlockouts',
+        'Rate Cards': 'PricingRatecards',
+        'Add-ons': 'PricingAddons',
+        'Messages': 'CommsMessages',
+        'Templates': 'CommsTemplates',
+        'General': 'SettingsGeneral',
+        'Payments': 'SettingsPayments',
+        'Taxes (GST)': 'SettingsTaxes',
+        'Availability & Buffers': 'SettingsAvailability',
+        'Policies': 'SettingsPolicies',
+        'Roles & Permissions': 'SettingsRoles',
+        'Integrations': 'SettingsIntegrations',
+        'Data & Privacy': 'SettingsPrivacy'
+      };
+      
+      const pageName = childToPageMap[child.title] || child.title;
+      return canAccessPage(pageName);
     }
     
     return false;

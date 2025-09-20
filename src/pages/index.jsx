@@ -165,7 +165,7 @@ function PagesContent() {
             } />
             
             <Route path="/Dashboard" element={
-                <ProtectedRoute>
+                <ProtectedRoute requiredPermission={true}>
                     <Layout currentPageName={currentPage}>
                         <Dashboard />
                     </Layout>
@@ -173,7 +173,7 @@ function PagesContent() {
             } />
             
             <Route path="/Calendar" element={
-                <ProtectedRoute>
+                <ProtectedRoute requiredPermission={true}>
                     <Layout currentPageName={currentPage}>
                         <Calendar />
                     </Layout>
@@ -181,7 +181,7 @@ function PagesContent() {
             } />
             
             <Route path="/BookingsAll" element={
-                <ProtectedRoute>
+                <ProtectedRoute requiredPermission={true}>
                     <Layout currentPageName={currentPage}>
                         <BookingsAll />
                     </Layout>
@@ -189,7 +189,7 @@ function PagesContent() {
             } />
             
             <Route path="/BookingsPending" element={
-                <ProtectedRoute>
+                <ProtectedRoute requiredPermission={true}>
                     <Layout currentPageName={currentPage}>
                         <BookingsPending />
                     </Layout>
@@ -197,7 +197,7 @@ function PagesContent() {
             } />
             
             <Route path="/BookingsHolds" element={
-                <ProtectedRoute>
+                <ProtectedRoute requiredPermission={true}>
                     <Layout currentPageName={currentPage}>
                         <BookingsHolds />
                     </Layout>
@@ -205,7 +205,7 @@ function PagesContent() {
             } />
             
             <Route path="/BookingsConfirmed" element={
-                <ProtectedRoute>
+                <ProtectedRoute requiredPermission={true}>
                     <Layout currentPageName={currentPage}>
                         <BookingsConfirmed />
                     </Layout>
@@ -213,7 +213,7 @@ function PagesContent() {
             } />
             
             <Route path="/BookingsCompleted" element={
-                <ProtectedRoute>
+                <ProtectedRoute requiredPermission={true}>
                     <Layout currentPageName={currentPage}>
                         <BookingsCompleted />
                     </Layout>
@@ -221,7 +221,7 @@ function PagesContent() {
             } />
             
             <Route path="/BookingsCancelled" element={
-                <ProtectedRoute>
+                <ProtectedRoute requiredPermission={true}>
                     <Layout currentPageName={currentPage}>
                         <BookingsCancelled />
                     </Layout>
@@ -229,7 +229,7 @@ function PagesContent() {
             } />
             
             <Route path="/Invoices" element={
-                <ProtectedRoute>
+                <ProtectedRoute requiredPermission={true}>
                     <Layout currentPageName={currentPage}>
                         <Invoices />
                     </Layout>
@@ -237,7 +237,7 @@ function PagesContent() {
             } />
             
             <Route path="/Resources" element={
-                <ProtectedRoute>
+                <ProtectedRoute requiredPermission={true}>
                     <Layout currentPageName={currentPage}>
                         <Resources />
                     </Layout>
@@ -285,7 +285,7 @@ function PagesContent() {
             } />
             
             <Route path="/Customers" element={
-                <ProtectedRoute>
+                <ProtectedRoute requiredPermission={true}>
                     <Layout currentPageName={currentPage}>
                         <Customers />
                     </Layout>

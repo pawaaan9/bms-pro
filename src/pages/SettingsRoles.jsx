@@ -8,6 +8,7 @@ import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@
 import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
+import { GreenCheckbox } from '@/components/ui/green-checkbox';
 import { useAuth } from '@/contexts/AuthContext';
 import { Plus, Edit, Trash2, Shield, Users, UserPlus, Settings, Eye, EyeOff } from 'lucide-react';
 
@@ -490,7 +491,7 @@ export default function SettingsRoles() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 {availablePermissions.map((permission) => (
                   <div key={permission.id} className="flex items-center space-x-2">
-                    <Checkbox
+                    <GreenCheckbox
                       id={permission.id}
                       checked={newUser.permissions.includes(permission.id)}
                       onCheckedChange={(checked) => handlePermissionChange(permission.id, checked)}
@@ -581,7 +582,7 @@ export default function SettingsRoles() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 {availablePermissions.map((permission) => (
                   <div key={permission.id} className="flex items-center space-x-2">
-                    <Checkbox
+                    <GreenCheckbox
                       id={`edit-${permission.id}`}
                       checked={editingUser.permissions.includes(permission.id)}
                       onCheckedChange={(checked) => handlePermissionChange(permission.id, checked, true)}
