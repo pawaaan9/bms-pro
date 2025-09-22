@@ -85,8 +85,9 @@ const navigationItems = [
   title: "Comms",
   icon: MessageSquare,
   children: [
-  { title: "Messages", url: createPageUrl("CommsMessages") },
-  { title: "Templates", url: createPageUrl("CommsTemplates") }]
+  { title: "Send Email", url: createPageUrl("CommsSendEmail") },
+  { title: "Templates", url: createPageUrl("CommsTemplates") },
+  { title: "Messages", url: createPageUrl("CommsMessages") }]
 
 },
 {
@@ -243,8 +244,9 @@ export default function Layout({ children, currentPageName }) {
         'Block-outs': 'ResourcesBlockouts',
         'Rate Cards': 'PricingRatecards',
         'Add-ons': 'PricingAddons',
-        'Messages': 'CommsMessages',
+        'Send Email': 'CommsSendEmail',
         'Templates': 'CommsTemplates',
+        'Messages': 'CommsMessages',
         'General': 'SettingsGeneral',
         'Payments': 'SettingsPayments',
         'Taxes (GST)': 'SettingsTaxes',

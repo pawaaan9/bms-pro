@@ -43,6 +43,8 @@ import CommsMessages from "./CommsMessages";
 
 import CommsTemplates from "./CommsTemplates";
 
+import CommsSendEmail from "./CommsSendEmail";
+
 import SettingsGeneral from "./SettingsGeneral";
 
 import SettingsPayments from "./SettingsPayments";
@@ -108,6 +110,8 @@ const PAGES = {
     CommsMessages: CommsMessages,
     
     CommsTemplates: CommsTemplates,
+    
+    CommsSendEmail: CommsSendEmail,
     
     SettingsGeneral: SettingsGeneral,
     
@@ -308,10 +312,10 @@ function PagesContent() {
                 </ProtectedRoute>
             } />
             
-            <Route path="/CommsMessages" element={
+            <Route path="/CommsSendEmail" element={
                 <ProtectedRoute>
                     <Layout currentPageName={currentPage}>
-                        <CommsMessages />
+                        <CommsSendEmail />
                     </Layout>
                 </ProtectedRoute>
             } />
@@ -320,6 +324,14 @@ function PagesContent() {
                 <ProtectedRoute>
                     <Layout currentPageName={currentPage}>
                         <CommsTemplates />
+                    </Layout>
+                </ProtectedRoute>
+            } />
+            
+            <Route path="/CommsMessages" element={
+                <ProtectedRoute>
+                    <Layout currentPageName={currentPage}>
+                        <CommsMessages />
                     </Layout>
                 </ProtectedRoute>
             } />

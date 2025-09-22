@@ -1,174 +1,578 @@
-import React, { useState } from "react";
-
-const initialTemplates = [
-  { name: "Booking Confirmation", type: "Email", subject: "Your booking is confirmed", body: "Dear {{name}}, your booking is confirmed for {{date}}." },
-  { name: "Payment Reminder", type: "SMS", subject: "", body: "Reminder: Your payment is due for booking {{bookingId}}." },
-];
+import React, { useState, useEffect } from "react";
+import { useAuth } from "@/contexts/AuthContext";
+import { emailTemplatesAPI, emailTemplateHelpers } from "@/services/emailService";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Plus, Edit, Trash2, Eye, Save, X, AlertCircle, CheckCircle, Copy } from "lucide-react";
+import ToastNotification from "@/components/ui/ToastNotification";
 
 export default function CommsTemplates() {
-  const [templates, setTemplates] = useState(initialTemplates);
-  const [newTemplate, setNewTemplate] = useState({ name: "", type: "Email", subject: "", body: "" });
-  const [editingIndex, setEditingIndex] = useState(null);
-  const [editTemplate, setEditTemplate] = useState({ name: "", type: "Email", subject: "", body: "" });
+  const { token } = useAuth();
+  
+  const [templates, setTemplates] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [isPreviewDialogOpen, setIsPreviewDialogOpen] = useState(false);
+  const [editingTemplate, setEditingTemplate] = useState(null);
+  const [previewTemplate, setPreviewTemplate] = useState(null);
+  
+  // Toast notification state
+  const [toast, setToast] = useState({
+    isVisible: false,
+    type: 'success',
+    title: '',
+    message: ''
+  });
+  
+  const [newTemplate, setNewTemplate] = useState({ 
+    name: "", 
+    type: "email", 
+    subject: "", 
+    body: "", 
+    variables: [] 
+  });
+  
+  const [editTemplate, setEditTemplate] = useState({ 
+    name: "", 
+    type: "email", 
+    subject: "", 
+    body: "", 
+    variables: [] 
+  });
+
+  // Helper function to show toast notifications
+  const showToast = (type, title, message) => {
+    setToast({
+      isVisible: true,
+      type,
+      title,
+      message
+    });
+  };
+
+  const hideToast = () => {
+    setToast(prev => ({ ...prev, isVisible: false }));
+  };
+
+  // Load templates on component mount
+  useEffect(() => {
+    loadTemplates();
+  }, []);
+
+  const loadTemplates = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const response = await emailTemplatesAPI.getTemplates(token);
+      setTemplates(response.templates || []);
+    } catch (err) {
+      setError(err.message);
+      showToast('error', 'Error', 'Failed to load email templates');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setNewTemplate((prev) => ({ ...prev, [name]: value }));
   };
 
-  const handleAdd = () => {
-    if (!newTemplate.name || !newTemplate.body) return;
-    setTemplates([...templates, newTemplate]);
-    setNewTemplate({ name: "", type: "Email", subject: "", body: "" });
-  };
-
-  const handleDelete = (idx) => {
-    setTemplates(templates.filter((_, i) => i !== idx));
-  };
-
-  const handleEditClick = (idx) => {
-    setEditingIndex(idx);
-    setEditTemplate(templates[idx]);
-  };
-
-  const handleEditChange = (e) => {
+  const handleEditInputChange = (e) => {
     const { name, value } = e.target;
     setEditTemplate((prev) => ({ ...prev, [name]: value }));
   };
 
-  const handleEditSave = () => {
-    setTemplates(templates.map((t, i) => (i === editingIndex ? editTemplate : t)));
-    setEditingIndex(null);
+  const handleCreate = async () => {
+    try {
+      const errors = emailTemplateHelpers.validateTemplate(newTemplate);
+      if (errors.length > 0) {
+        showToast('error', 'Validation Error', errors.join(", "));
+        return;
+      }
+
+      // Extract variables from template
+      const variables = emailTemplateHelpers.extractVariables(newTemplate.subject + " " + newTemplate.body);
+      
+      const templateData = {
+        ...newTemplate,
+        variables
+      };
+
+      await emailTemplatesAPI.createTemplate(templateData, token);
+      
+      showToast('success', 'Success', 'Email template created successfully');
+      
+      setIsCreateDialogOpen(false);
+      setNewTemplate({ name: "", type: "email", subject: "", body: "", variables: [] });
+      loadTemplates();
+    } catch (err) {
+      showToast('error', 'Error', err.message);
+    }
   };
 
-  return (
-    <div>
-      <h1 className="text-3xl font-bold text-gray-900 mb-2">Templates</h1>
-      <p className="mb-4 text-gray-600">Manage email and SMS templates for automated communications. Add, edit, or remove templates below.</p>
+  const handleEdit = async () => {
+    try {
+      const errors = emailTemplateHelpers.validateTemplate(editTemplate);
+      if (errors.length > 0) {
+        showToast('error', 'Validation Error', errors.join(", "));
+        return;
+      }
 
-      <div className="mb-6 flex flex-col md:flex-row gap-2 items-end">
-        <input
-          type="text"
-          name="name"
-          placeholder="Template Name"
-          className="border rounded px-2 py-1 w-full md:w-48"
-          value={newTemplate.name}
-          onChange={handleInputChange}
-        />
-        <select
-          name="type"
-          className="border rounded px-2 py-1 w-full md:w-32"
-          value={newTemplate.type}
-          onChange={handleInputChange}
-        >
-          <option value="Email">Email</option>
-          <option value="SMS">SMS</option>
-        </select>
-        {newTemplate.type === "Email" && (
-          <input
-            type="text"
-            name="subject"
-            placeholder="Subject"
-            className="border rounded px-2 py-1 w-full md:w-48"
-            value={newTemplate.subject}
-            onChange={handleInputChange}
-          />
-        )}
-        <input
-          type="text"
-          name="body"
-          placeholder="Body (use {{placeholders}})"
-          className="border rounded px-2 py-1 w-full md:w-64"
-          value={newTemplate.body}
-          onChange={handleInputChange}
-        />
-        <button
-          className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 disabled:opacity-50"
-          onClick={handleAdd}
-          disabled={!newTemplate.name || !newTemplate.body}
-        >
-          Add
-        </button>
+      // Extract variables from template
+      const variables = emailTemplateHelpers.extractVariables(editTemplate.subject + " " + editTemplate.body);
+      
+      const templateData = {
+        ...editTemplate,
+        variables
+      };
+
+      await emailTemplatesAPI.updateTemplate(editingTemplate.id, templateData, token);
+      
+      showToast('success', 'Success', 'Email template updated successfully');
+      
+      setIsEditDialogOpen(false);
+      setEditingTemplate(null);
+      loadTemplates();
+    } catch (err) {
+      showToast('error', 'Error', err.message);
+    }
+  };
+
+  const handleDelete = async (templateId) => {
+    if (!confirm("Are you sure you want to delete this template?")) return;
+    
+    try {
+      await emailTemplatesAPI.deleteTemplate(templateId, token);
+      
+      showToast('success', 'Success', 'Email template deleted successfully');
+      
+      loadTemplates();
+    } catch (err) {
+      showToast('error', 'Error', err.message);
+    }
+  };
+
+  const handleEditClick = (template) => {
+    setEditingTemplate(template);
+    setEditTemplate({
+      name: template.name,
+      type: template.type,
+      subject: template.subject,
+      body: template.body,
+      variables: template.variables || []
+    });
+    setIsEditDialogOpen(true);
+  };
+
+  const handlePreview = (template) => {
+    setPreviewTemplate(template);
+    setIsPreviewDialogOpen(true);
+  };
+
+  const insertVariable = (variable, isEdit = false) => {
+    const template = isEdit ? editTemplate : newTemplate;
+    const setTemplate = isEdit ? setEditTemplate : setNewTemplate;
+    const field = isEdit ? 'body' : 'body';
+    
+    const currentValue = template[field];
+    const newValue = currentValue + `{{${variable}}}`;
+    setTemplate(prev => ({ ...prev, [field]: newValue }));
+  };
+
+  const availableVariables = emailTemplateHelpers.getAvailableVariables();
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading templates...</p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      <div className="flex justify-between items-center">
+        <div>
+          <h1 className="text-3xl font-bold text-gray-900">Email Templates</h1>
+          <p className="text-gray-600 mt-2">
+            Create and manage reusable email templates with personalization variables.
+          </p>
+        </div>
+        <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
+          <DialogTrigger asChild>
+            <Button>
+              <Plus className="w-4 h-4 mr-2" />
+              New Template
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Create Email Template</DialogTitle>
+              <DialogDescription>
+                Create a new email template with personalization variables.
+              </DialogDescription>
+            </DialogHeader>
+            <Tabs defaultValue="basic" className="w-full">
+              <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="basic">Basic Info</TabsTrigger>
+                <TabsTrigger value="content">Content</TabsTrigger>
+              </TabsList>
+              <TabsContent value="basic" className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-sm font-medium">Template Name</label>
+                    <Input
+                      name="name"
+                      placeholder="e.g., Booking Confirmation"
+                      value={newTemplate.name}
+                      onChange={handleInputChange}
+                    />
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium">Type</label>
+                    <Select
+                      value={newTemplate.type}
+                      onValueChange={(value) => setNewTemplate(prev => ({ ...prev, type: value }))}
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="email">Email</SelectItem>
+                        <SelectItem value="sms">SMS</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                <div>
+                  <label className="text-sm font-medium">Subject</label>
+                  <Input
+                    name="subject"
+                    placeholder="e.g., Your booking is confirmed"
+                    value={newTemplate.subject}
+                    onChange={handleInputChange}
+                  />
+                </div>
+              </TabsContent>
+              <TabsContent value="content" className="space-y-4">
+                <div>
+                  <div className="flex justify-between items-center mb-2">
+                    <label className="text-sm font-medium">Message Body</label>
+                    <div className="text-xs text-gray-500">
+                      Use variables like {"{{customerName}}"} for personalization
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+                    <div className="lg:col-span-2">
+                      <Textarea
+                        name="body"
+                        placeholder="Dear {{customerName}}, your booking is confirmed for {{bookingDate}}..."
+                        value={newTemplate.body}
+                        onChange={handleInputChange}
+                        className="min-h-[200px]"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <div className="text-sm font-medium">Available Variables</div>
+                      <div className="space-y-1 max-h-48 overflow-y-auto">
+                        {availableVariables.map((variable) => (
+                          <Button
+                            key={variable.key}
+                            variant="outline"
+                            size="sm"
+                            className="w-full justify-start text-xs"
+                            onClick={() => insertVariable(variable.key)}
+                          >
+                            <Copy className="w-3 h-3 mr-1" />
+                            {variable.label}
+                          </Button>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </TabsContent>
+            </Tabs>
+            <div className="flex justify-end space-x-2 pt-4">
+              <Button variant="outline" onClick={() => setIsCreateDialogOpen(false)}>
+                Cancel
+              </Button>
+              <Button onClick={handleCreate}>
+                <Save className="w-4 h-4 mr-2" />
+                Create Template
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
 
-      <table className="w-full mb-4 border rounded-lg bg-white overflow-hidden text-sm">
-        <thead>
-          <tr className="bg-gray-100">
-            <th className="py-2 px-3 text-left">Name</th>
-            <th className="py-2 px-3 text-left">Type</th>
-            <th className="py-2 px-3 text-left">Subject</th>
-            <th className="py-2 px-3 text-left">Body</th>
-            <th className="py-2 px-3 text-left">Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          {templates.map((template, idx) => (
-            <tr key={idx}>
-              {editingIndex === idx ? (
-                <>
-                  <td className="py-2 px-3">
-                    <input
-                      type="text"
-                      name="name"
-                      className="border rounded px-2 py-1 w-full"
-                      value={editTemplate.name}
-                      onChange={handleEditChange}
-                    />
-                  </td>
-                  <td className="py-2 px-3">
-                    <select
-                      name="type"
-                      className="border rounded px-2 py-1 w-full"
-                      value={editTemplate.type}
-                      onChange={handleEditChange}
+      {error && (
+        <Alert variant="destructive">
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
+      )}
+
+      {templates.length === 0 ? (
+        <Card>
+          <CardContent className="text-center py-12">
+            <div className="text-gray-500 mb-4">
+              <Plus className="w-12 h-12 mx-auto mb-4 opacity-50" />
+              <h3 className="text-lg font-medium mb-2">No templates yet</h3>
+              <p>Create your first email template to get started.</p>
+            </div>
+            <Button onClick={() => setIsCreateDialogOpen(true)}>
+              <Plus className="w-4 h-4 mr-2" />
+              Create Template
+            </Button>
+          </CardContent>
+        </Card>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {templates.map((template) => (
+            <Card key={template.id} className="hover:shadow-lg transition-shadow">
+              <CardHeader>
+                <div className="flex justify-between items-start">
+                  <div>
+                    <CardTitle className="text-lg">{template.name}</CardTitle>
+                    <CardDescription className="flex items-center gap-2 mt-1">
+                      <Badge variant={template.type === 'email' ? 'default' : 'secondary'}>
+                        {template.type.toUpperCase()}
+                      </Badge>
+                      {template.isActive ? (
+                        <Badge variant="outline" className="text-green-600">
+                          <CheckCircle className="w-3 h-3 mr-1" />
+                          Active
+                        </Badge>
+                      ) : (
+                        <Badge variant="outline" className="text-gray-500">
+                          Inactive
+                        </Badge>
+                      )}
+                    </CardDescription>
+                  </div>
+                  <div className="flex space-x-1">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handlePreview(template)}
                     >
-                      <option value="Email">Email</option>
-                      <option value="SMS">SMS</option>
-                    </select>
-                  </td>
-                  <td className="py-2 px-3">
-                    {editTemplate.type === "Email" ? (
-                      <input
-                        type="text"
-                        name="subject"
-                        className="border rounded px-2 py-1 w-full"
-                        value={editTemplate.subject}
-                        onChange={handleEditChange}
-                      />
-                    ) : (
-                      <span className="text-gray-400">N/A</span>
-                    )}
-                  </td>
-                  <td className="py-2 px-3">
-                    <input
-                      type="text"
-                      name="body"
-                      className="border rounded px-2 py-1 w-full"
-                      value={editTemplate.body}
-                      onChange={handleEditChange}
-                    />
-                  </td>
-                  <td className="py-2 px-3 flex gap-2">
-                    <button className="bg-green-600 text-white px-3 py-1 rounded hover:bg-green-700" onClick={handleEditSave}>Save</button>
-                    <button className="bg-gray-300 text-gray-800 px-3 py-1 rounded hover:bg-gray-400" onClick={() => setEditingIndex(null)}>Cancel</button>
-                  </td>
-                </>
-              ) : (
-                <>
-                  <td className="py-2 px-3 font-medium">{template.name}</td>
-                  <td className="py-2 px-3">{template.type}</td>
-                  <td className="py-2 px-3">{template.type === "Email" ? template.subject : <span className="text-gray-400">N/A</span>}</td>
-                  <td className="py-2 px-3">{template.body}</td>
-                  <td className="py-2 px-3 flex gap-2">
-                    <button className="bg-yellow-500 text-white px-3 py-1 rounded hover:bg-yellow-600" onClick={() => handleEditClick(idx)}>Edit</button>
-                    <button className="bg-red-600 text-white px-3 py-1 rounded hover:bg-red-700" onClick={() => handleDelete(idx)}>Delete</button>
-                  </td>
-                </>
-              )}
-            </tr>
+                      <Eye className="w-4 h-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleEditClick(template)}
+                    >
+                      <Edit className="w-4 h-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleDelete(template.id)}
+                      className="text-red-600 hover:text-red-700"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-2">
+                  <div>
+                    <div className="text-sm font-medium text-gray-700">Subject</div>
+                    <div className="text-sm text-gray-600 truncate">{template.subject}</div>
+                  </div>
+                  <div>
+                    <div className="text-sm font-medium text-gray-700">Body Preview</div>
+                    <div className="text-sm text-gray-600 line-clamp-2">
+                      {template.body.substring(0, 100)}...
+                    </div>
+                  </div>
+                  {template.variables && template.variables.length > 0 && (
+                    <div>
+                      <div className="text-sm font-medium text-gray-700">Variables</div>
+                      <div className="flex flex-wrap gap-1 mt-1">
+                        {template.variables.map((variable) => (
+                          <Badge key={variable} variant="outline" className="text-xs">
+                            {variable}
+                          </Badge>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
           ))}
-        </tbody>
-      </table>
+        </div>
+      )}
+
+      {/* Edit Dialog */}
+      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Edit Email Template</DialogTitle>
+            <DialogDescription>
+              Update the email template with personalization variables.
+            </DialogDescription>
+          </DialogHeader>
+          <Tabs defaultValue="basic" className="w-full">
+            <TabsList className="grid w-full grid-cols-2">
+              <TabsTrigger value="basic">Basic Info</TabsTrigger>
+              <TabsTrigger value="content">Content</TabsTrigger>
+            </TabsList>
+            <TabsContent value="basic" className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="text-sm font-medium">Template Name</label>
+                  <Input
+                    name="name"
+                    value={editTemplate.name}
+                    onChange={handleEditInputChange}
+                  />
+                </div>
+                <div>
+                  <label className="text-sm font-medium">Type</label>
+                  <Select
+                    value={editTemplate.type}
+                    onValueChange={(value) => setEditTemplate(prev => ({ ...prev, type: value }))}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="email">Email</SelectItem>
+                      <SelectItem value="sms">SMS</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <div>
+                <label className="text-sm font-medium">Subject</label>
+                <Input
+                  name="subject"
+                  value={editTemplate.subject}
+                  onChange={handleEditInputChange}
+                />
+              </div>
+            </TabsContent>
+            <TabsContent value="content" className="space-y-4">
+              <div>
+                <div className="flex justify-between items-center mb-2">
+                  <label className="text-sm font-medium">Message Body</label>
+                  <div className="text-xs text-gray-500">
+                    Use variables like {"{{customerName}}"} for personalization
+                  </div>
+                </div>
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+                  <div className="lg:col-span-2">
+                    <Textarea
+                      name="body"
+                      value={editTemplate.body}
+                      onChange={handleEditInputChange}
+                      className="min-h-[200px]"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <div className="text-sm font-medium">Available Variables</div>
+                    <div className="space-y-1 max-h-48 overflow-y-auto">
+                      {availableVariables.map((variable) => (
+                        <Button
+                          key={variable.key}
+                          variant="outline"
+                          size="sm"
+                          className="w-full justify-start text-xs"
+                          onClick={() => insertVariable(variable.key, true)}
+                        >
+                          <Copy className="w-3 h-3 mr-1" />
+                          {variable.label}
+                        </Button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </TabsContent>
+          </Tabs>
+          <div className="flex justify-end space-x-2 pt-4">
+            <Button variant="outline" onClick={() => setIsEditDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleEdit}>
+              <Save className="w-4 h-4 mr-2" />
+              Update Template
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Preview Dialog */}
+      <Dialog open={isPreviewDialogOpen} onOpenChange={setIsPreviewDialogOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Template Preview</DialogTitle>
+            <DialogDescription>
+              Preview of the email template with sample data.
+            </DialogDescription>
+          </DialogHeader>
+          {previewTemplate && (
+            <div className="space-y-4">
+              <div>
+                <div className="text-sm font-medium text-gray-700 mb-2">Subject</div>
+                <div className="p-3 bg-gray-50 rounded-md">
+                  {emailTemplateHelpers.processTemplate(previewTemplate.subject, {
+                    customerName: "John Doe",
+                    bookingDate: "2024-01-15",
+                    eventType: "Wedding Reception"
+                  })}
+                </div>
+              </div>
+              <div>
+                <div className="text-sm font-medium text-gray-700 mb-2">Body</div>
+                <div className="p-3 bg-gray-50 rounded-md whitespace-pre-wrap">
+                  {emailTemplateHelpers.processTemplate(previewTemplate.body, {
+                    customerName: "John Doe",
+                    bookingDate: "2024-01-15",
+                    eventType: "Wedding Reception",
+                    startTime: "6:00 PM",
+                    endTime: "11:00 PM",
+                    hallName: "Main Hall",
+                    calculatedPrice: "$500.00"
+                  })}
+                </div>
+              </div>
+            </div>
+          )}
+          <div className="flex justify-end pt-4">
+            <Button variant="outline" onClick={() => setIsPreviewDialogOpen(false)}>
+              Close
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Toast Notification */}
+      <ToastNotification
+        isVisible={toast.isVisible}
+        onClose={hideToast}
+        type={toast.type}
+        title={toast.title}
+        message={toast.message}
+      />
     </div>
   );
 }
