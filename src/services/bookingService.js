@@ -38,6 +38,8 @@ export const transformBookingToCalendarEvent = (backendBooking) => {
 // Fetch bookings for a hall owner (or parent user for sub-users)
 export const fetchBookingsForCalendar = async (hallOwnerId, token) => {
   try {
+    console.log('fetchBookingsForCalendar - API call starting:', { hallOwnerId, token: token ? 'Present' : 'Missing', url: `${API_BASE_URL}/bookings/hall-owner/${hallOwnerId}` });
+    
     const response = await fetch(`${API_BASE_URL}/bookings/hall-owner/${hallOwnerId}`, {
       method: 'GET',
       headers: {
@@ -46,15 +48,20 @@ export const fetchBookingsForCalendar = async (hallOwnerId, token) => {
       },
     });
 
+    console.log('fetchBookingsForCalendar - Response status:', response.status, response.statusText);
+
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({ message: 'Unknown error' }));
+      console.error('fetchBookingsForCalendar - Error response:', errorData);
       throw new Error(`Failed to fetch bookings: ${response.status} ${response.statusText} - ${errorData.message || 'Unknown error'}`);
     }
 
     const backendBookings = await response.json();
+    console.log('fetchBookingsForCalendar - Backend response:', backendBookings);
     
     // Transform bookings to calendar events
     const calendarEvents = backendBookings.map(transformBookingToCalendarEvent);
+    console.log('fetchBookingsForCalendar - Transformed bookings:', calendarEvents);
     
     return calendarEvents;
   } catch (error) {

@@ -16,7 +16,6 @@ import {
   CreditCard,
   Banknote,
   XCircle,
-  RotateCcw,
   Receipt,
   ArrowUpDown,
   Calendar,
@@ -30,6 +29,7 @@ import {
   CheckCircle,
   MoreVertical, // Added MoreVertical import
   Clock, // Added Clock import
+  Loader2,
 } from 'lucide-react';
 import {
   Table,
@@ -67,113 +67,10 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { format, addDays, subDays, isAfter, isBefore } from 'date-fns';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useAuth } from '@/contexts/AuthContext';
+import { fetchInvoices, fetchPayments, createInvoice, updateInvoiceStatus, recordPayment, calculateInvoiceSummary, generateInvoiceFromBooking } from '@/services/invoiceService';
+import { fetchBookingsForCalendar } from '@/services/bookingService';
 
-// Comprehensive sample data representing real business scenarios
-const generateInvoiceData = () => {
-  const customers = [
-    { name: 'Sarah Chen', email: 's.chen@email.com', abn: null },
-    { name: 'Acme Corp Pty Ltd', email: 'accounts@acme.com', abn: '12 345 678 901' },
-    { name: 'David Kim', email: 'd.kim@email.com', abn: null },
-    { name: 'MegaEvents Australia', email: 'billing@megaevents.com.au', abn: '98 765 432 109' },
-    { name: 'Lisa Johnson', email: 'lisa.j@community.org', abn: null },
-    { name: 'Premium Catering Co', email: 'finance@premiumcatering.com.au', abn: '87 654 321 098' },
-    { name: 'Bright Futures Foundation', email: 'accounts@brightfutures.org.au', abn: '76 543 210 987' },
-    { name: 'Tech Innovators Ltd', email: 'ap@techinnovators.com.au', abn: '65 432 109 876' },
-  ];
-
-  const resources = ['Hall A', 'Hall B', 'Main Hall', 'Conference Room', 'Studio Space'];
-  const types = ['DEPOSIT', 'FINAL', 'BOND', 'ADD-ONS'];
-  const statuses = ['DRAFT', 'SENT', 'PARTIAL', 'PAID', 'OVERDUE', 'VOID', 'REFUNDED'];
-
-  return Array.from({ length: 32 }, (_, i) => {
-    const customer = customers[i % customers.length];
-    const type = types[Math.floor(Math.random() * types.length)];
-    const status = statuses[Math.floor(Math.random() * statuses.length)];
-    
-    const issueDate = subDays(new Date(), Math.floor(Math.random() * 90));
-    const dueDate = addDays(issueDate, Math.floor(Math.random() * 30) + 7);
-    
-    // Realistic pricing based on type and resource
-    const baseAmount = type === 'DEPOSIT' ? Math.random() * 800 + 200 :
-                     type === 'FINAL' ? Math.random() * 3000 + 500 :
-                     type === 'BOND' ? Math.random() * 800 + 200 :
-                     Math.random() * 500 + 50;
-    
-    const subtotal = Math.round(baseAmount * 100) / 100;
-    const gst = Math.round(subtotal * 0.1 * 100) / 100; // Proper GST calculation
-    const total = subtotal + gst;
-    
-    const paidAmount = status === 'PAID' ? total :
-                      status === 'PARTIAL' ? Math.round(total * Math.random() * 100) / 100 :
-                      0;
-
-    return {
-      id: `INV-${2000 + i}`,
-      type,
-      customer,
-      booking: `BKG-${3000 + i}`,
-      resource: resources[Math.floor(Math.random() * resources.length)],
-      issueDate,
-      dueDate,
-      subtotal,
-      gst,
-      total,
-      paidAmount,
-      status: status === 'OVERDUE' && isAfter(new Date(), dueDate) ? 'OVERDUE' : status,
-      priority: Math.random() > 0.8 ? 'high' : 'normal',
-      sentAt: status !== 'DRAFT' ? addDays(issueDate, 1) : null,
-      description: `${resources[Math.floor(Math.random() * resources.length)]} - ${type} Payment`,
-      lineItems: [
-        {
-          description: `Hall hire - ${type.toLowerCase()} payment`,
-          quantity: 1,
-          unitPrice: subtotal,
-          gstRate: 0.1,
-          gstAmount: gst
-        }
-      ]
-    };
-  }).sort((a, b) => b.issueDate - a.issueDate);
-};
-
-const generatePaymentData = () => {
-  const methods = ['Card', 'Bank transfer', 'Cash', 'Stripe Link'];
-  const statuses = ['Succeeded', 'Pending', 'Failed', 'Refunded'];
-  
-  return Array.from({ length: 18 }, (_, i) => {
-    const method = methods[Math.floor(Math.random() * methods.length)];
-    const status = statuses[Math.floor(Math.random() * statuses.length)];
-    const amount = Math.round((Math.random() * 2500 + 100) * 100) / 100;
-    
-    return {
-      id: `PAY-${String.fromCharCode(65 + Math.floor(Math.random() * 26))}${Math.floor(Math.random() * 10)}${String.fromCharCode(65 + Math.floor(Math.random() * 26))}${Math.floor(Math.random() * 10)}${String.fromCharCode(65 + Math.floor(Math.random() * 26))}${Math.floor(Math.random() * 10)}`,
-      invoice: `INV-${2000 + Math.floor(Math.random() * 32)}`,
-      method,
-      amount,
-      status,
-      processedAt: subDays(new Date(), Math.floor(Math.random() * 30)),
-      reference: method === 'Card' ? `****${Math.floor(1000 + Math.random() * 9000)}` : 
-                method === 'Bank transfer' ? `REF${Math.floor(100000 + Math.random() * 900000)}` :
-                `CASH-${Math.floor(1000 + Math.random() * 9000)}`,
-      fee: method === 'Card' ? Math.round(amount * 0.029 * 100) / 100 : 0,
-    };
-  }).sort((a, b) => b.processedAt - a.processedAt);
-};
-
-const generateCreditNoteData = () => {
-  const reasons = ['Cancelled booking', 'Overcharge', 'Bond retention reversal', 'Service adjustment', 'Promotional discount'];
-  const statuses = ['Draft', 'Sent', 'Applied', 'Refunded'];
-  
-  return Array.from({ length: 8 }, (_, i) => ({
-    id: `CN-${String(i + 1).padStart(3, '0')}`,
-    invoice: `INV-${2000 + Math.floor(Math.random() * 32)}`,
-    reason: reasons[Math.floor(Math.random() * reasons.length)],
-    amount: Math.round((Math.random() * 800 + 50) * 100) / 100,
-    issuedAt: subDays(new Date(), Math.floor(Math.random() * 60)),
-    status: statuses[Math.floor(Math.random() * statuses.length)],
-    memo: 'Credit note issued for booking adjustment',
-  })).sort((a, b) => b.issuedAt - a.issuedAt);
-};
 
 // Smart filter chips component with beautiful animations
 const FilterChips = ({ activeStatuses, onStatusToggle, type = 'invoice' }) => {
@@ -816,6 +713,8 @@ const InvoiceDetailPane = ({ invoice, onClose }) => {
 
 // Main magnificent component
 export default function Invoices() {
+  const { user, token } = useAuth();
+  
   // State management with intelligent defaults
   const [activeTab, setActiveTab] = useState('invoices');
   const [selectedRows, setSelectedRows] = useState(new Set());
@@ -825,10 +724,75 @@ export default function Invoices() {
   const [selectedInvoice, setSelectedInvoice] = useState(null);
   const [showDetailPane, setShowDetailPane] = useState(false);
   
-  // Generate comprehensive data
-  const [invoicesData] = useState(() => generateInvoiceData());
-  const [paymentsData] = useState(() => generatePaymentData());
-  const [creditNotesData] = useState(() => generateCreditNoteData());
+  // Real data state
+  const [invoicesData, setInvoicesData] = useState([]);
+  const [paymentsData, setPaymentsData] = useState([]);
+  const [bookingsData, setBookingsData] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  
+  // Dialog states
+  const [showCreateInvoiceDialog, setShowCreateInvoiceDialog] = useState(false);
+  const [showPaymentDialog, setShowPaymentDialog] = useState(false);
+  const [selectedBooking, setSelectedBooking] = useState(null);
+  const [newInvoiceData, setNewInvoiceData] = useState({
+    invoiceType: 'DEPOSIT',
+    amount: '',
+    description: '',
+    dueDate: ''
+  });
+  const [newPaymentData, setNewPaymentData] = useState({
+    amount: '',
+    paymentMethod: 'Bank Transfer',
+    reference: '',
+    notes: ''
+  });
+
+  // Fetch data on component mount
+  useEffect(() => {
+    const fetchData = async () => {
+      console.log('Invoice page - useEffect triggered');
+      console.log('Invoice page - User:', user);
+      console.log('Invoice page - Token:', token);
+      
+      if (!user || !token) {
+        console.log('Invoice page - Missing user or token, skipping fetch');
+        setLoading(false);
+        return;
+      }
+      
+      setLoading(true);
+      setError(null);
+      
+      try {
+        const hallOwnerId = user.role === 'sub_user' ? user.parentUserId : user.id;
+        
+        console.log('Invoice page - User object:', user);
+        console.log('Invoice page - Hall Owner ID:', hallOwnerId);
+        console.log('Invoice page - Token:', token ? 'Present' : 'Missing');
+        
+        // Fetch invoices, payments, and bookings in parallel
+        const [invoices, payments, bookings] = await Promise.all([
+          fetchInvoices(hallOwnerId, token),
+          fetchPayments(hallOwnerId, token),
+          fetchBookingsForCalendar(hallOwnerId, token)
+        ]);
+        
+        console.log('Invoice page - Fetched data:', { invoices: invoices.length, payments: payments.length, bookings: bookings.length });
+        
+        setInvoicesData(invoices);
+        setPaymentsData(payments);
+        setBookingsData(bookings);
+      } catch (err) {
+        console.error('Error fetching data:', err);
+        setError(err.message);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, [user, token]);
 
   // Intelligent search with debouncing
   useEffect(() => {
@@ -909,10 +873,6 @@ export default function Invoices() {
     );
   }, []);
 
-  const handleInvoiceAction = useCallback((action, invoiceId) => {
-    console.log(`🚀 Executing action: ${action} on invoice: ${invoiceId}`);
-    // Action handling would go here
-  }, []);
 
   const handleRowClick = useCallback((invoice) => {
     setSelectedInvoice(invoice);
@@ -924,19 +884,153 @@ export default function Invoices() {
     setSelectedInvoice(null);
   }, []);
 
+  // Handle creating new invoice
+  const handleCreateInvoice = useCallback(async () => {
+    if (!selectedBooking || !newInvoiceData.amount) return;
+    
+    try {
+      const invoiceData = generateInvoiceFromBooking(
+        selectedBooking,
+        newInvoiceData.invoiceType,
+        parseFloat(newInvoiceData.amount),
+        newInvoiceData.description
+      );
+      
+      await createInvoice(invoiceData, token);
+      
+      // Refresh data
+      const hallOwnerId = user.role === 'sub_user' ? user.parentUserId : user.id;
+      const [invoices, payments] = await Promise.all([
+        fetchInvoices(hallOwnerId, token),
+        fetchPayments(hallOwnerId, token)
+      ]);
+      
+      setInvoicesData(invoices);
+      setPaymentsData(payments);
+      
+      // Reset form and close dialog
+      setNewInvoiceData({
+        invoiceType: 'DEPOSIT',
+        amount: '',
+        description: '',
+        dueDate: ''
+      });
+      setShowCreateInvoiceDialog(false);
+      setSelectedBooking(null);
+    } catch (err) {
+      console.error('Error creating invoice:', err);
+      setError(err.message);
+    }
+  }, [selectedBooking, newInvoiceData, token, user]);
+
+  // Handle recording payment
+  const handleRecordPayment = useCallback(async () => {
+    if (!selectedInvoice || !newPaymentData.amount) return;
+    
+    try {
+      await recordPayment(selectedInvoice.id, newPaymentData, token);
+      
+      // Refresh data
+      const hallOwnerId = user.role === 'sub_user' ? user.parentUserId : user.id;
+      const [invoices, payments] = await Promise.all([
+        fetchInvoices(hallOwnerId, token),
+        fetchPayments(hallOwnerId, token)
+      ]);
+      
+      setInvoicesData(invoices);
+      setPaymentsData(payments);
+      
+      // Reset form and close dialog
+      setNewPaymentData({
+        amount: '',
+        paymentMethod: 'Bank Transfer',
+        reference: '',
+        notes: ''
+      });
+      setShowPaymentDialog(false);
+    } catch (err) {
+      console.error('Error recording payment:', err);
+      setError(err.message);
+    }
+  }, [selectedInvoice, newPaymentData, token, user]);
+
+  // Handle invoice actions
+  const handleInvoiceAction = useCallback(async (action, invoiceId) => {
+    try {
+      switch (action) {
+        case 'send':
+          await updateInvoiceStatus(invoiceId, 'SENT', token);
+          break;
+        case 'record-payment':
+          setSelectedInvoice(invoicesData.find(inv => inv.id === invoiceId));
+          setShowPaymentDialog(true);
+          return;
+        default:
+          console.log(`Action ${action} not implemented yet`);
+      }
+      
+      // Refresh invoices
+      const hallOwnerId = user.role === 'sub_user' ? user.parentUserId : user.id;
+      const invoices = await fetchInvoices(hallOwnerId, token);
+      setInvoicesData(invoices);
+    } catch (err) {
+      console.error('Error handling invoice action:', err);
+      setError(err.message);
+    }
+  }, [invoicesData, token, user]);
+
   // Calculate summary statistics
   const summaryStats = useMemo(() => {
-    const totalAmount = filteredInvoices.reduce((sum, inv) => sum + inv.total, 0);
-    const paidAmount = filteredInvoices.reduce((sum, inv) => sum + inv.paidAmount, 0);
-    const overdueCount = filteredInvoices.filter(inv => inv.status === 'OVERDUE').length;
-    
-    return {
-      totalAmount,
-      paidAmount,
-      outstandingAmount: totalAmount - paidAmount,
-      overdueCount
-    };
+    return calculateInvoiceSummary(filteredInvoices);
   }, [filteredInvoices]);
+
+  // Show loading state
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="flex flex-col items-center gap-4">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          <p className="text-gray-600">Loading invoices and payments...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Show error state
+  if (error) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <AlertTriangle className="h-12 w-12 text-red-500 mx-auto mb-4" />
+          <h2 className="text-xl font-semibold text-gray-900 mb-2">Error Loading Data</h2>
+          <p className="text-gray-600 mb-4">{error}</p>
+          <Button onClick={() => window.location.reload()}>
+            Try Again
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  // Show debug info if no user/token
+  if (!user || !token) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <AlertTriangle className="h-12 w-12 text-yellow-500 mx-auto mb-4" />
+          <h2 className="text-xl font-semibold text-gray-900 mb-2">Authentication Required</h2>
+          <p className="text-gray-600 mb-4">
+            {!user ? 'No user data found. ' : ''}
+            {!token ? 'No authentication token found. ' : ''}
+            Please log in to access invoices.
+          </p>
+          <Button onClick={() => window.location.href = '/login'}>
+            Go to Login
+          </Button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="relative min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
@@ -986,7 +1080,10 @@ export default function Invoices() {
                 <Download className="mr-2 h-4 w-4" />
                 Export CSV
               </Button>
-              <Button className="bg-gradient-to-r from-yellow-400 to-orange-500 hover:from-yellow-500 hover:to-orange-600 text-gray-900 font-semibold shadow-lg">
+              <Button 
+                className="bg-gradient-to-r from-yellow-400 to-orange-500 hover:from-yellow-500 hover:to-orange-600 text-gray-900 font-semibold shadow-lg"
+                onClick={() => setShowCreateInvoiceDialog(true)}
+              >
                 <Plus className="mr-2 h-4 w-4" />
                 New Invoice
               </Button>
@@ -996,7 +1093,7 @@ export default function Invoices() {
 
         {/* Revolutionary Tabs Interface */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-3 bg-white/50 backdrop-blur border-0 shadow-lg rounded-xl p-1">
+          <TabsList className="grid w-full grid-cols-2 bg-white/50 backdrop-blur border-0 shadow-lg rounded-xl p-1">
             <TabsTrigger 
               value="invoices" 
               className="flex items-center gap-2 data-[state=active]:bg-white data-[state=active]:shadow-md"
@@ -1015,16 +1112,6 @@ export default function Invoices() {
               Payments
               <Badge className="ml-2 bg-green-500 text-white text-xs">
                 {paymentsData.length}
-              </Badge>
-            </TabsTrigger>
-            <TabsTrigger 
-              value="credit-notes"
-              className="flex items-center gap-2 data-[state=active]:bg-white data-[state=active]:shadow-md"
-            >
-              <RotateCcw className="h-4 w-4" />
-              Credit Notes
-              <Badge className="ml-2 bg-purple-500 text-white text-xs">
-                {creditNotesData.length}
               </Badge>
             </TabsTrigger>
           </TabsList>
@@ -1162,33 +1249,6 @@ export default function Invoices() {
               </motion.div>
             </TabsContent>
 
-            <TabsContent value="credit-notes">
-              <motion.div
-                key="credit-notes-content"
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: 20 }}
-                transition={{ duration: 0.2 }}
-              >
-                <Card className="shadow-xl border-0 bg-white/80 backdrop-blur">
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <RotateCcw className="h-5 w-5 text-purple-600" />
-                      Credit Notes & Adjustments
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="p-6">
-                    <div className="text-center py-12">
-                      <RotateCcw className="h-16 w-16 text-gray-400 mx-auto mb-4" />
-                      <p className="text-gray-500 text-lg">Credit notes table coming soon...</p>
-                      <p className="text-gray-400 text-sm mt-2">
-                        Manage refunds, adjustments and credit note issuance
-                      </p>
-                    </div>
-                  </CardContent>
-                </Card>
-              </motion.div>
-            </TabsContent>
           </AnimatePresence>
         </Tabs>
       </main>
@@ -1202,6 +1262,190 @@ export default function Invoices() {
           />
         )}
       </AnimatePresence>
+
+      {/* Create Invoice Dialog */}
+      <Dialog open={showCreateInvoiceDialog} onOpenChange={setShowCreateInvoiceDialog}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Create New Invoice</DialogTitle>
+            <DialogDescription>
+              Select a booking and create an invoice for it.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="booking-select">Select Booking</Label>
+              <Select onValueChange={(value) => {
+                const booking = bookingsData.find(b => b.id === value);
+                setSelectedBooking(booking);
+                if (booking) {
+                  setNewInvoiceData(prev => ({
+                    ...prev,
+                    amount: booking.calculatedPrice?.toString() || '',
+                    description: `${booking.eventType} - ${prev.invoiceType} Payment`
+                  }));
+                }
+              }}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Choose a booking..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {bookingsData.filter(b => b.status === 'confirmed').map(booking => (
+                    <SelectItem key={booking.id} value={booking.id}>
+                      {booking.customer} - {booking.eventType} ({booking.bookingDate})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {selectedBooking && (
+              <>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="invoice-type">Invoice Type</Label>
+                    <Select 
+                      value={newInvoiceData.invoiceType} 
+                      onValueChange={(value) => setNewInvoiceData(prev => ({ ...prev, invoiceType: value }))}
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="DEPOSIT">Deposit</SelectItem>
+                        <SelectItem value="FINAL">Final Payment</SelectItem>
+                        <SelectItem value="BOND">Bond</SelectItem>
+                        <SelectItem value="ADD-ONS">Add-ons</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  
+                  <div>
+                    <Label htmlFor="amount">Amount (AUD)</Label>
+                    <Input
+                      id="amount"
+                      type="number"
+                      step="0.01"
+                      value={newInvoiceData.amount}
+                      onChange={(e) => setNewInvoiceData(prev => ({ ...prev, amount: e.target.value }))}
+                      placeholder="0.00"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <Label htmlFor="description">Description</Label>
+                  <Textarea
+                    id="description"
+                    value={newInvoiceData.description}
+                    onChange={(e) => setNewInvoiceData(prev => ({ ...prev, description: e.target.value }))}
+                    placeholder="Invoice description..."
+                  />
+                </div>
+
+                <div>
+                  <Label htmlFor="due-date">Due Date</Label>
+                  <Input
+                    id="due-date"
+                    type="date"
+                    value={newInvoiceData.dueDate}
+                    onChange={(e) => setNewInvoiceData(prev => ({ ...prev, dueDate: e.target.value }))}
+                  />
+                </div>
+              </>
+            )}
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowCreateInvoiceDialog(false)}>
+              Cancel
+            </Button>
+            <Button 
+              onClick={handleCreateInvoice}
+              disabled={!selectedBooking || !newInvoiceData.amount}
+            >
+              Create Invoice
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Record Payment Dialog */}
+      <Dialog open={showPaymentDialog} onOpenChange={setShowPaymentDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Record Payment</DialogTitle>
+            <DialogDescription>
+              Record a payment for invoice {selectedInvoice?.invoiceNumber}
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="payment-amount">Amount (AUD)</Label>
+              <Input
+                id="payment-amount"
+                type="number"
+                step="0.01"
+                value={newPaymentData.amount}
+                onChange={(e) => setNewPaymentData(prev => ({ ...prev, amount: e.target.value }))}
+                placeholder="0.00"
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="payment-method">Payment Method</Label>
+              <Select 
+                value={newPaymentData.paymentMethod} 
+                onValueChange={(value) => setNewPaymentData(prev => ({ ...prev, paymentMethod: value }))}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Bank Transfer">Bank Transfer</SelectItem>
+                  <SelectItem value="Card">Credit/Debit Card</SelectItem>
+                  <SelectItem value="Cash">Cash</SelectItem>
+                  <SelectItem value="Cheque">Cheque</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div>
+              <Label htmlFor="reference">Reference</Label>
+              <Input
+                id="reference"
+                value={newPaymentData.reference}
+                onChange={(e) => setNewPaymentData(prev => ({ ...prev, reference: e.target.value }))}
+                placeholder="Payment reference..."
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="notes">Notes</Label>
+              <Textarea
+                id="notes"
+                value={newPaymentData.notes}
+                onChange={(e) => setNewPaymentData(prev => ({ ...prev, notes: e.target.value }))}
+                placeholder="Additional notes..."
+              />
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowPaymentDialog(false)}>
+              Cancel
+            </Button>
+            <Button 
+              onClick={handleRecordPayment}
+              disabled={!newPaymentData.amount}
+            >
+              Record Payment
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

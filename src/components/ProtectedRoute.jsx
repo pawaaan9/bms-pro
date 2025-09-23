@@ -36,6 +36,7 @@ const ProtectedRoute = ({ children, requiredPermission }) => {
         'bookingsconfirmed': 'BookingsConfirmed',
         'bookingscompleted': 'BookingsCompleted',
         'bookingscancelled': 'BookingsCancelled',
+        'invoices': 'Invoices',
         'resourceshalls': 'ResourcesHalls',
         'resourcesholidays': 'ResourcesHolidays',
         'resourcesblockouts': 'ResourcesBlockouts',
@@ -57,6 +58,11 @@ const ProtectedRoute = ({ children, requiredPermission }) => {
     };
     
     const pageName = getPageNameFromPath(location.pathname);
+    
+    console.log('ProtectedRoute - Path:', location.pathname);
+    console.log('ProtectedRoute - Page name:', pageName);
+    console.log('ProtectedRoute - User:', user);
+    console.log('ProtectedRoute - Can access page:', canAccessPage(pageName));
     
     if (!canAccessPage(pageName)) {
       return (
