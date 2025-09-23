@@ -52,18 +52,15 @@ const navigationItems = [
   title: "Resources",
   icon: Building2,
   children: [
-  { title: "My Resources", url: createPageUrl("Resources") },
-  { title: "Halls/Rooms", url: createPageUrl("ResourcesHalls") },
-  { title: "Public Holidays", url: createPageUrl("ResourcesHolidays") },
-  { title: "Block-outs", url: createPageUrl("ResourcesBlockouts") }]
+  { title: "Resources", url: createPageUrl("Resources") },
+  { title: "Add-ons", url: createPageUrl("PricingAddons") }]
 
 },
 {
   title: "Pricing",
   icon: Tag,
   children: [
-  { title: "Rate Cards", url: createPageUrl("PricingRatecards") },
-  { title: "Add-ons", url: createPageUrl("PricingAddons") }]
+  { title: "Rate Cards", url: createPageUrl("PricingRatecards") }]
 
 },
 {
@@ -238,12 +235,9 @@ export default function Layout({ children, currentPageName }) {
         'Confirmed': 'BookingsConfirmed',
         'Completed': 'BookingsCompleted',
         'Cancelled': 'BookingsCancelled',
-        'My Resources': 'Resources',
-        'Halls/Rooms': 'ResourcesHalls',
-        'Public Holidays': 'ResourcesHolidays',
-        'Block-outs': 'ResourcesBlockouts',
-        'Rate Cards': 'PricingRatecards',
+        'Resources': 'Resources',
         'Add-ons': 'PricingAddons',
+        'Rate Cards': 'PricingRatecards',
         'Send Email': 'CommsSendEmail',
         'Templates': 'CommsTemplates',
         'Messages': 'CommsMessages',
