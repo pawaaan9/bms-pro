@@ -293,6 +293,31 @@ export const computeCustomerAnalytics = (customers) => {
   });
 };
 
+// Create a new booking (admin endpoint)
+export const createAdminBooking = async (bookingData, token) => {
+  try {
+    const response = await fetch(`${API_BASE_URL}/bookings/admin`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(bookingData)
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({ message: 'Unknown error' }));
+      throw new Error(`Failed to create booking: ${response.status} ${response.statusText} - ${errorData.message || 'Unknown error'}`);
+    }
+
+    const result = await response.json();
+    return result;
+  } catch (error) {
+    console.error('Error creating admin booking:', error);
+    throw error;
+  }
+};
+
 // Fetch customers from bookings for a hall owner (or parent user for sub-users)
 export const fetchCustomersFromBookings = async (hallOwnerId, token) => {
   try {

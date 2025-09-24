@@ -37,11 +37,33 @@ import ConfirmationModal from '../components/ui/ConfirmationModal';
 import ToastNotification from '../components/ui/ToastNotification';
 import { format, subDays, addDays, isToday, isTomorrow, isYesterday } from 'date-fns';
 import { useAuth } from '../contexts/AuthContext';
+import AdminBookingForm from '../components/bookings/AdminBookingForm';
 
 // Transform backend booking data to match frontend format
 const transformBookingData = (backendBooking) => {
-  const startDateTime = new Date(`${backendBooking.bookingDate}T${backendBooking.startTime}:00`);
-  const endDateTime = new Date(`${backendBooking.bookingDate}T${backendBooking.endTime}:00`);
+  // Ensure we handle dates correctly without timezone issues
+  // Parse the date components separately to avoid timezone conversion
+  const [year, month, day] = backendBooking.bookingDate.split('-').map(Number);
+  const [startHour, startMin] = backendBooking.startTime.split(':').map(Number);
+  const [endHour, endMin] = backendBooking.endTime.split(':').map(Number);
+  
+  const startDateTime = new Date(year, month - 1, day, startHour, startMin, 0);
+  const endDateTime = new Date(year, month - 1, day, endHour, endMin, 0);
+  
+  // Debug logging for date transformation (only for Super Man booking)
+  if (backendBooking.customerName === 'Super Man' || backendBooking.customerName.includes('Super')) {
+    console.log('Transform booking data:', {
+      id: backendBooking.id,
+      originalDate: backendBooking.bookingDate,
+      originalStartTime: backendBooking.startTime,
+      originalEndTime: backendBooking.endTime,
+      transformedStart: startDateTime.toISOString(),
+      transformedEnd: endDateTime.toISOString(),
+      localStartDate: format(startDateTime, 'yyyy-MM-dd'),
+      localEndDate: format(endDateTime, 'yyyy-MM-dd')
+    });
+  }
+  
   
   return {
     id: backendBooking.id,
@@ -107,6 +129,8 @@ export default function BookingsAll() {
     title: '',
     message: ''
   });
+  const [showBookingForm, setShowBookingForm] = useState(false);
+  const [showCalendar, setShowCalendar] = useState(false);
   
   // Advanced filter states
   const [filters, setFilters] = useState({
@@ -729,7 +753,19 @@ export default function BookingsAll() {
                   <TooltipContent>Export current view or selected bookings</TooltipContent>
                 </Tooltip>
                 
-                <Button className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 shadow-lg">
+                <Button 
+                  variant="outline"
+                  onClick={() => setShowCalendar(!showCalendar)}
+                  className={showCalendar ? "bg-blue-50 border-blue-200 text-blue-700" : ""}
+                >
+                  <Calendar className="mr-2 h-4 w-4" />
+                  {showCalendar ? 'Hide Calendar' : 'Show Calendar'}
+                </Button>
+                
+                <Button 
+                  className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 shadow-lg"
+                  onClick={() => setShowBookingForm(true)}
+                >
                   <Plus className="mr-2 h-4 w-4" />
                   New Booking
                 </Button>
@@ -739,6 +775,169 @@ export default function BookingsAll() {
 
           {/* Quick Stats Dashboard */}
           <QuickStats stats={quickStats} />
+
+          {/* Calendar View */}
+          {showCalendar && (
+            <Card className="shadow-sm border-0 bg-gradient-to-br from-white to-gray-50/50">
+              <CardHeader>
+                <CardContent className="pt-0">
+                  <div className="text-center text-gray-600">
+                    <Calendar className="h-12 w-12 mx-auto mb-4 text-gray-400" />
+                    <h3 className="text-lg font-semibold mb-2">Bookings Calendar</h3>
+                    <p className="text-sm mb-4">
+                      View your bookings on a calendar. Click on any date to see bookings for that day.
+                    </p>
+                    <div className="text-center mb-4">
+                      <h4 className="text-xl font-bold text-gray-800">
+                        {format(new Date(), 'MMMM yyyy')}
+                      </h4>
+                    </div>
+                    <div className="grid grid-cols-7 gap-2 mb-4">
+                      {Array.from({ length: 7 }, (_, i) => {
+                        const today = new Date();
+                        const currentDay = today.getDay();
+                        const daysFromMonday = currentDay === 0 ? -6 : 1 - currentDay;
+                        const weekStart = new Date(today);
+                        weekStart.setDate(today.getDate() + daysFromMonday);
+                        
+                        const dayDate = new Date(weekStart);
+                        dayDate.setDate(weekStart.getDate() + i);
+                        const dayNames = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+                        
+                        // Debug logging for header dates
+                        console.log('Header date generation:', {
+                          index: i,
+                          dayName: dayNames[i],
+                          dayDate: dayDate.getDate(),
+                          fullDate: format(dayDate, 'yyyy-MM-dd'),
+                          dayOfWeek: dayDate.getDay()
+                        });
+                        
+                        return (
+                          <div key={i} className="text-sm font-medium text-gray-500 p-2">
+                            <div>{dayNames[i]}</div>
+                            <div className="text-lg font-bold text-gray-700">{dayDate.getDate()}</div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                    <div className="grid grid-cols-7 gap-2">
+                      {Array.from({ length: 35 }, (_, i) => {
+                        // Get current date and calculate the start of the current week (Monday)
+                        const today = new Date();
+                        const currentDay = today.getDay(); // 0 = Sunday, 1 = Monday, etc.
+                        const daysFromMonday = currentDay === 0 ? -6 : 1 - currentDay; // Adjust for Monday start
+                        const weekStart = new Date(today);
+                        weekStart.setDate(today.getDate() + daysFromMonday);
+                        
+                        // Create calendar date
+                        const date = new Date(weekStart);
+                        date.setDate(weekStart.getDate() + i);
+                        const dateStr = format(date, 'yyyy-MM-dd'); // Use date-fns format for consistency
+                        
+                        // Debug logging for calendar date generation
+                        if (i < 7) {
+                          console.log('Calendar date generation:', {
+                            index: i,
+                            weekStart: format(weekStart, 'yyyy-MM-dd'),
+                            generatedDate: dateStr,
+                            dayOfWeek: date.getDay(),
+                            dayName: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][date.getDay()]
+                          });
+                        }
+                        const dayBookings = bookings.filter(b => {
+                          // Get the booking date string in the same format
+                          const bookingDateStr = format(b.start, 'yyyy-MM-dd');
+                          const isMatch = bookingDateStr === dateStr;
+                          
+                          // Debug logging for date matching
+                          if (b.customer.name === 'Super Man' || b.customer.name.includes('Super')) {
+                            console.log('Calendar date matching debug:', {
+                              calendarDate: dateStr,
+                              bookingDate: bookingDateStr,
+                              bookingId: b.id,
+                              customer: b.customer.name,
+                              originalStart: b.start.toISOString(),
+                              localStart: format(b.start, 'yyyy-MM-dd HH:mm:ss'),
+                              isMatch: isMatch
+                            });
+                          }
+                          
+                          return isMatch;
+                        });
+                        const isToday = date.toDateString() === new Date().toDateString();
+                        const isCurrentMonth = date.getMonth() === new Date().getMonth();
+                        
+                        return (
+                          <div
+                            key={i}
+                            className={`min-h-[80px] p-2 border border-gray-200 rounded-lg cursor-pointer hover:bg-blue-50 transition-colors ${
+                              isToday ? 'bg-blue-100 border-blue-300' : 
+                              isCurrentMonth ? 'bg-white' : 'bg-gray-50'
+                            }`}
+                            onClick={() => {
+                              // Filter bookings to this date
+                              const startOfDay = new Date(date);
+                              startOfDay.setHours(0, 0, 0, 0);
+                              const endOfDay = new Date(date);
+                              endOfDay.setHours(23, 59, 59, 999);
+                              
+                              setFilters(prev => ({
+                                ...prev,
+                                dateFrom: startOfDay,
+                                dateTo: endOfDay
+                              }));
+                            }}
+                          >
+                            <div className={`text-sm font-medium mb-1 ${
+                              isCurrentMonth ? 'text-gray-900' : 'text-gray-400'
+                            } ${isToday ? 'text-blue-600' : ''}`}>
+                              {date.getDate()}
+                            </div>
+                            <div className="space-y-1">
+                              {dayBookings.slice(0, 2).map(booking => (
+                                <div
+                                  key={booking.id}
+                                  className={`text-xs p-1 rounded truncate ${
+                                    booking.status === 'confirmed' ? 'bg-green-100 text-green-800' :
+                                    booking.status === 'pending' ? 'bg-orange-100 text-orange-800' :
+                                    booking.status === 'cancelled' ? 'bg-red-100 text-red-800' :
+                                    'bg-gray-100 text-gray-800'
+                                  }`}
+                                  title={`${booking.customer.name} - ${booking.purpose}`}
+                                >
+                                  {booking.customer.name}
+                                </div>
+                              ))}
+                              {dayBookings.length > 2 && (
+                                <div className="text-xs text-gray-500">
+                                  +{dayBookings.length - 2} more
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                    <div className="mt-4 flex justify-center gap-4 text-xs">
+                      <div className="flex items-center gap-2">
+                        <div className="w-3 h-3 bg-green-100 rounded"></div>
+                        <span>Confirmed</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <div className="w-3 h-3 bg-orange-100 rounded"></div>
+                        <span>Pending</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <div className="w-3 h-3 bg-red-100 rounded"></div>
+                        <span>Cancelled</span>
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </CardHeader>
+            </Card>
+          )}
 
           {/* Enhanced Search & Filters */}
           <Card className="shadow-sm border-0 bg-gradient-to-br from-white to-gray-50/50">
@@ -867,6 +1066,25 @@ export default function BookingsAll() {
           type={toast.type}
           title={toast.title}
           message={toast.message}
+        />
+
+        {/* Booking Form Dialog */}
+        <AdminBookingForm
+          isOpen={showBookingForm}
+          onClose={() => setShowBookingForm(false)}
+          onSuccess={(newBooking) => {
+            setShowBookingForm(false);
+            // Refresh bookings data
+            fetchBookings(true);
+            // Show success toast
+            setToast({
+              isVisible: true,
+              type: 'success',
+              title: 'Booking Created!',
+              message: `New booking created for ${newBooking.customerName}`
+            });
+          }}
+          mode="create"
         />
       </div>
     </TooltipProvider>

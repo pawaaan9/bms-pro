@@ -25,6 +25,7 @@ import { format, addDays, startOfWeek } from "date-fns";
 import { useAuth } from "../contexts/AuthContext";
 import { fetchBookingsForCalendar, updateBookingStatus, fetchResources } from "../services/bookingService";
 import { getDataUserId } from "../services/userService";
+import AdminBookingForm from "../components/bookings/AdminBookingForm";
 
 
 export default function Calendar() {
@@ -39,6 +40,7 @@ export default function Calendar() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [refreshing, setRefreshing] = useState(false);
+  const [showBookingForm, setShowBookingForm] = useState(false);
 
   const weekStart = startOfWeek(currentDate, { weekStartsOn: 1 }); // Monday
   const days = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
@@ -166,11 +168,23 @@ export default function Calendar() {
         return false;
       }
       
-      // Filter by date
-      const eventDate = new Date(event.bookingDate);
-      const dayDate = new Date(currentDate);
-      const eventDateStr = eventDate.toISOString().split('T')[0];
-      const dayDateStr = dayDate.toISOString().split('T')[0];
+      // Filter by date - use date-fns format to avoid timezone issues
+      const eventDateStr = format(new Date(event.bookingDate), 'yyyy-MM-dd');
+      const dayDateStr = format(currentDate, 'yyyy-MM-dd');
+      
+      // Debug logging for Super Man booking
+      if (event.customerName === 'Super Man' || event.customerName?.includes('Super')) {
+        console.log('Calendar day view - date matching:', {
+          eventId: event.id,
+          customerName: event.customerName,
+          originalBookingDate: event.bookingDate,
+          eventDateStr: eventDateStr,
+          dayDateStr: dayDateStr,
+          currentDate: currentDate.toISOString(),
+          isMatch: eventDateStr === dayDateStr
+        });
+      }
+      
       return eventDateStr === dayDateStr;
     });
 
@@ -264,12 +278,23 @@ export default function Calendar() {
                     return false;
                   }
                   
-                  // Filter by date
-                  const eventDate = new Date(event.bookingDate);
-                  const dayDate = new Date(day);
-                  const eventDateStr = eventDate.toISOString().split('T')[0];
-                  const dayDateStr = dayDate.toISOString().split('T')[0];
+                  // Filter by date - use date-fns format to avoid timezone issues
+                  const eventDateStr = format(new Date(event.bookingDate), 'yyyy-MM-dd');
+                  const dayDateStr = format(day, 'yyyy-MM-dd');
                   const isSameDate = eventDateStr === dayDateStr;
+                  
+                  // Debug logging for Super Man booking
+                  if (event.customerName === 'Super Man' || event.customerName?.includes('Super')) {
+                    console.log('Calendar week view - date matching:', {
+                      eventId: event.id,
+                      customerName: event.customerName,
+                      originalBookingDate: event.bookingDate,
+                      eventDateStr: eventDateStr,
+                      dayDateStr: dayDateStr,
+                      dayDate: day.toISOString(),
+                      isMatch: isSameDate
+                    });
+                  }
                   
                   return isSameDate;
                 });
@@ -377,10 +402,23 @@ export default function Calendar() {
           return false;
         }
         
-        const eventDate = new Date(event.bookingDate);
-        const dayDate = new Date(day);
-        const eventDateStr = eventDate.toISOString().split('T')[0];
-        const dayDateStr = dayDate.toISOString().split('T')[0];
+        // Use date-fns format to avoid timezone issues
+        const eventDateStr = format(new Date(event.bookingDate), 'yyyy-MM-dd');
+        const dayDateStr = format(day, 'yyyy-MM-dd');
+        
+        // Debug logging for Super Man booking
+        if (event.customerName === 'Super Man' || event.customerName?.includes('Super')) {
+          console.log('Calendar month view - date matching:', {
+            eventId: event.id,
+            customerName: event.customerName,
+            originalBookingDate: event.bookingDate,
+            eventDateStr: eventDateStr,
+            dayDateStr: dayDateStr,
+            dayDate: day.toISOString(),
+            isMatch: eventDateStr === dayDateStr
+          });
+        }
+        
         return eventDateStr === dayDateStr;
       });
     };
@@ -572,7 +610,10 @@ export default function Calendar() {
             <Plus className="mr-2 h-4 w-4" />
             Add Block-out
           </Button>
-          <Button variant="outline">
+          <Button 
+            variant="outline"
+            onClick={() => setShowBookingForm(true)}
+          >
             <Plus className="mr-2 h-4 w-4" />
             New Booking
           </Button>
@@ -774,6 +815,17 @@ export default function Calendar() {
           </Card>
         </div>
       </div>
+
+      {/* Booking Form Dialog */}
+      <AdminBookingForm
+        isOpen={showBookingForm}
+        onClose={() => setShowBookingForm(false)}
+        onSuccess={() => {
+          setShowBookingForm(false);
+          fetchData(true); // Refresh calendar data
+        }}
+        mode="create"
+      />
     </main>
   );
 }
