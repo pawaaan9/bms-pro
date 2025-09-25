@@ -19,6 +19,7 @@ import BookingsCompleted from "./BookingsCompleted";
 import BookingsCancelled from "./BookingsCancelled";
 
 import Invoices from "./Invoices";
+import Quotations from "./Quotations";
 import Login from "./Login";
 
 import Resources from "./Resources";
@@ -89,6 +90,8 @@ const PAGES = {
     BookingsCancelled: BookingsCancelled,
     
     Invoices: Invoices,
+    
+    Quotations: Quotations,
     
     Resources: Resources,
     
@@ -236,6 +239,14 @@ function PagesContent() {
                 <ProtectedRoute requiredPermission={true}>
                     <Layout currentPageName={currentPage}>
                         <Invoices />
+                    </Layout>
+                </ProtectedRoute>
+            } />
+            
+            <Route path="/Quotations" element={
+                <ProtectedRoute requiredPermission={true}>
+                    <Layout currentPageName={currentPage}>
+                        <Quotations />
                     </Layout>
                 </ProtectedRoute>
             } />

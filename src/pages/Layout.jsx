@@ -17,7 +17,8 @@ import {
   Tag,
   Menu,
   X,
-  LogOut } from
+  LogOut,
+  Receipt } from
 "lucide-react";
 
 const navigationItems = [
@@ -47,6 +48,11 @@ const navigationItems = [
   title: "Invoices & Payments",
   url: createPageUrl("Invoices"),
   icon: DollarSign
+},
+{
+  title: "Quotations",
+  url: createPageUrl("Quotations"),
+  icon: Receipt
 },
 {
   title: "Resources",
