@@ -248,11 +248,29 @@ const QuotationForm = ({
       <style>{`
         [data-radix-dialog-overlay] {
           backdrop-filter: blur(8px) !important;
-          background-color: rgba(0, 0, 0, 0.1) !important;
+          background-color: rgba(255, 255, 255, 0.02) !important;
+        }
+        [data-radix-dialog-content] {
+          position: fixed !important;
+          top: 50% !important;
+          left: 50% !important;
+          transform: translate(-50%, -50%) !important;
+          max-height: 90vh !important;
+          margin: 0 !important;
+        }
+        @media (max-width: 640px) {
+          [data-radix-dialog-content] {
+            top: 2rem !important;
+            left: 1rem !important;
+            right: 1rem !important;
+            transform: none !important;
+            width: calc(100vw - 2rem) !important;
+            max-height: calc(100vh - 4rem) !important;
+          }
         }
       `}</style>
       <Dialog open={isOpen} onOpenChange={handleClose}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto bg-white/95 backdrop-blur-md border-0 shadow-2xl">
+        <DialogContent className="w-[95vw] max-w-4xl max-h-[90vh] overflow-y-auto bg-white/95 backdrop-blur-md border-0 shadow-2xl mx-2 sm:mx-6 md:mx-8 my-4 sm:my-8">
         <DialogHeader>
           <DialogTitle>
             {quotation ? 'Edit Quotation' : 'Create New Quotation'}
@@ -269,7 +287,7 @@ const QuotationForm = ({
               <CardTitle className="text-lg">Customer Information</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                 <div>
                   <Label htmlFor="customerName">Customer Name *</Label>
                   <Input
@@ -326,7 +344,7 @@ const QuotationForm = ({
               <CardTitle className="text-lg">Event Information</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                 <div>
                   <Label htmlFor="eventType">Event Type *</Label>
                   <Input
@@ -411,7 +429,7 @@ const QuotationForm = ({
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                 <div>
                   <Label htmlFor="totalAmount">Total Amount (AUD) *</Label>
                   <div className="relative">
@@ -486,15 +504,15 @@ const QuotationForm = ({
 
         </div>
 
-        <DialogFooter className="flex gap-2">
-          <Button variant="outline" onClick={handleClose} disabled={isLoading}>
+        <DialogFooter className="flex flex-col sm:flex-row gap-2 sm:gap-3">
+          <Button variant="outline" onClick={handleClose} disabled={isLoading} className="w-full sm:w-auto">
             Cancel
           </Button>
-          <Button onClick={handleSave} disabled={isLoading}>
+          <Button onClick={handleSave} disabled={isLoading} className="w-full sm:w-auto">
             <Save className="h-4 w-4 mr-2" />
             {quotation ? 'Update' : 'Save Draft'}
           </Button>
-          <Button onClick={handleSend} disabled={isLoading}>
+          <Button onClick={handleSend} disabled={isLoading} className="w-full sm:w-auto">
             <Send className="h-4 w-4 mr-2" />
             {quotation ? 'Resend' : 'Send to Customer'}
           </Button>

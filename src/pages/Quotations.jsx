@@ -245,6 +245,19 @@ export default function Quotations() {
     }
   }, [user, token]);
 
+  // Prevent background scrolling when detail pane is open
+  useEffect(() => {
+    if (showDetailPane) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = 'unset';
+    }
+
+    return () => {
+      document.body.style.overflow = 'unset';
+    };
+  }, [showDetailPane]);
+
   const loadQuotations = async () => {
     try {
       setIsLoading(true);
@@ -286,10 +299,6 @@ export default function Quotations() {
     }));
   };
 
-  const handleRowClick = (quotation) => {
-    setSelectedQuotation(quotation);
-    setShowDetailPane(true);
-  };
 
   const handleAction = async (action, quotationId) => {
     const quotation = quotations.find(q => q.id === quotationId);
@@ -458,26 +467,28 @@ export default function Quotations() {
   return (
     <main className="space-y-6">
       {/* Header */}
-      <header className="flex flex-wrap items-center justify-between gap-4">
+      <header className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Quotations</h1>
-          <p className="mt-1 text-gray-500">
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Quotations</h1>
+          <p className="mt-1 text-sm sm:text-base text-gray-500">
             Create, manage, and track quotation requests for potential bookings.
           </p>
         </div>
-        <div className="flex gap-2">
-          <Button variant="outline" disabled={selectedRows.size === 0}>
+        <div className="flex flex-col sm:flex-row gap-2">
+          <Button variant="outline" disabled={selectedRows.size === 0} className="w-full sm:w-auto">
             <Send className="mr-2 h-4 w-4" />
-            Bulk Send
+            <span className="hidden sm:inline">Bulk Send</span>
+            <span className="sm:hidden">Bulk</span>
           </Button>
-          <Button variant="outline" onClick={handleExportCSV} disabled={filteredQuotations.length === 0}>
+          <Button variant="outline" onClick={handleExportCSV} disabled={filteredQuotations.length === 0} className="w-full sm:w-auto">
             <Download className="mr-2 h-4 w-4" />
-            Export CSV
+            <span className="hidden sm:inline">Export CSV</span>
+            <span className="sm:hidden">Export</span>
           </Button>
           <Button onClick={() => {
             setEditingQuotation(null);
             setShowCreateDialog(true);
-          }}>
+          }} className="w-full sm:w-auto">
             <Plus className="mr-2 h-4 w-4" />
             New Quotation
           </Button>
@@ -531,8 +542,8 @@ export default function Quotations() {
       {/* Filter Bar */}
       <Card>
         <CardContent className="pt-6">
-          <div className="flex flex-wrap items-center gap-4">
-            <div className="relative flex-1 max-w-sm">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 sm:gap-4">
+            <div className="relative flex-1 min-w-0">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
               <Input
                 placeholder="Search quotations..."
@@ -546,30 +557,32 @@ export default function Quotations() {
                 }}
               />
             </div>
-            <Select value={selectedResource} onValueChange={setSelectedResource}>
-              <SelectTrigger className="w-[180px]">
-                <SelectValue placeholder="All Resources" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="All Resources">All Resources</SelectItem>
-                <SelectItem value="Main Hall">Main Hall</SelectItem>
-                <SelectItem value="Hall A">Hall A</SelectItem>
-                <SelectItem value="Hall B">Hall B</SelectItem>
-              </SelectContent>
-            </Select>
-            <Select value={selectedStatus} onValueChange={setSelectedStatus}>
-              <SelectTrigger className="w-[140px]">
-                <SelectValue placeholder="All Statuses" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="All Statuses">All Statuses</SelectItem>
-                <SelectItem value="Draft">Draft</SelectItem>
-                <SelectItem value="Sent">Sent</SelectItem>
-                <SelectItem value="Accepted">Accepted</SelectItem>
+            <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
+              <Select value={selectedResource} onValueChange={setSelectedResource}>
+                <SelectTrigger className="w-full sm:w-[180px]">
+                  <SelectValue placeholder="All Resources" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="All Resources">All Resources</SelectItem>
+                  <SelectItem value="Main Hall">Main Hall</SelectItem>
+                  <SelectItem value="Hall A">Hall A</SelectItem>
+                  <SelectItem value="Hall B">Hall B</SelectItem>
+                </SelectContent>
+              </Select>
+              <Select value={selectedStatus} onValueChange={setSelectedStatus}>
+                <SelectTrigger className="w-full sm:w-[140px]">
+                  <SelectValue placeholder="All Statuses" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="All Statuses">All Statuses</SelectItem>
+                  <SelectItem value="Draft">Draft</SelectItem>
+                  <SelectItem value="Sent">Sent</SelectItem>
+                  <SelectItem value="Accepted">Accepted</SelectItem>
                 <SelectItem value="Declined">Declined</SelectItem>
                 <SelectItem value="Expired">Expired</SelectItem>
               </SelectContent>
             </Select>
+            </div>
           </div>
         </CardContent>
       </Card>
@@ -629,8 +642,6 @@ export default function Quotations() {
                     <TableRow
                       key={quotation.id}
                       data-state={selectedRows.has(quotation.id) ? 'selected' : ''}
-                      className="cursor-pointer"
-                      onClick={() => handleRowClick(quotation)}
                     >
                       <TableCell onClick={(e) => e.stopPropagation()}>
                         <Checkbox
@@ -701,8 +712,8 @@ export default function Quotations() {
       {/* Detail Pane */}
       {showDetailPane && selectedQuotation && (
         <div className="fixed inset-0 z-50 flex">
-          <div className="fixed inset-0 bg-black/50" onClick={() => setShowDetailPane(false)} />
-          <div className="fixed right-0 top-0 h-full w-96 bg-white shadow-xl p-6 overflow-y-auto">
+          <div className="fixed inset-0 bg-white/20 backdrop-blur-md" onClick={() => setShowDetailPane(false)} />
+          <div className="fixed right-0 top-0 h-full w-full sm:w-[500px] bg-white/95 backdrop-blur-md shadow-2xl border-l border-gray-200 p-4 sm:p-6 overflow-y-auto">
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-xl font-semibold">Quotation Details</h2>
               <Button variant="ghost" size="icon" onClick={() => setShowDetailPane(false)}>
@@ -711,45 +722,116 @@ export default function Quotations() {
             </div>
 
             <div className="space-y-6">
-              <div>
-                <h3 className="font-bold text-lg">{selectedQuotation.eventType}</h3>
-                <p className="text-gray-600">for {selectedQuotation.customerName}</p>
+              {/* Header */}
+              <div className="border-b border-gray-200 pb-4">
+                <div className="flex items-center justify-between mb-2">
+                  <h3 className="font-bold text-xl">{selectedQuotation.eventType}</h3>
+                  <StatusBadge status={selectedQuotation.status} />
+                </div>
+                <p className="text-gray-600 text-lg">for {selectedQuotation.customerName}</p>
+                <p className="text-sm text-gray-500 mt-1">Quotation ID: {selectedQuotation.id}</p>
               </div>
 
-              <div className="space-y-3">
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Quotation ID:</span>
-                  <span className="font-medium">{selectedQuotation.id}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Resource:</span>
-                  <span>{selectedQuotation.resource}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Event Date:</span>
-                  <span>{format(selectedQuotation.eventDate, 'dd MMM yyyy')}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Total Amount:</span>
-                  <span className="font-mono font-semibold">
-                    ${selectedQuotation.totalAmount.toLocaleString('en-AU', { minimumFractionDigits: 2 })} AUD
-                  </span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Valid Until:</span>
-                  <span>{format(selectedQuotation.validUntil, 'dd MMM yyyy')}</span>
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <h4 className="font-semibold">Line Items:</h4>
+              {/* Customer Information */}
+              <div className="bg-gray-50 rounded-lg p-4">
+                <h4 className="font-semibold text-lg mb-3 flex items-center">
+                  <User className="h-5 w-5 mr-2" />
+                  Customer Information
+                </h4>
                 <div className="space-y-2">
-                  {selectedQuotation.items.map((item, index) => (
-                    <div key={index} className="flex justify-between text-sm">
-                      <span>{item.name}</span>
-                      <span className="font-mono">${item.amount.toFixed(2)}</span>
+                  <div className="flex items-center">
+                    <User className="h-4 w-4 mr-2 text-gray-500" />
+                    <span className="text-gray-600">Name:</span>
+                    <span className="ml-2 font-medium">{selectedQuotation.customerName}</span>
+                  </div>
+                  <div className="flex items-center">
+                    <Mail className="h-4 w-4 mr-2 text-gray-500" />
+                    <span className="text-gray-600">Email:</span>
+                    <span className="ml-2 font-medium">{selectedQuotation.customerEmail}</span>
+                  </div>
+                  <div className="flex items-center">
+                    <Phone className="h-4 w-4 mr-2 text-gray-500" />
+                    <span className="text-gray-600">Phone:</span>
+                    <span className="ml-2 font-medium">{selectedQuotation.customerPhone}</span>
+                  </div>
+                  {selectedQuotation.guestCount && (
+                    <div className="flex items-center">
+                      <Users className="h-4 w-4 mr-2 text-gray-500" />
+                      <span className="text-gray-600">Guest Count:</span>
+                      <span className="ml-2 font-medium">{selectedQuotation.guestCount} guests</span>
                     </div>
-                  ))}
+                  )}
+                </div>
+              </div>
+
+              {/* Event Information */}
+              <div className="bg-blue-50 rounded-lg p-4">
+                <h4 className="font-semibold text-lg mb-3 flex items-center">
+                  <Calendar className="h-5 w-5 mr-2" />
+                  Event Information
+                </h4>
+                <div className="space-y-2">
+                  <div className="flex items-center">
+                    <Building2 className="h-4 w-4 mr-2 text-gray-500" />
+                    <span className="text-gray-600">Resource:</span>
+                    <span className="ml-2 font-medium">{selectedQuotation.resource}</span>
+                  </div>
+                  <div className="flex items-center">
+                    <Calendar className="h-4 w-4 mr-2 text-gray-500" />
+                    <span className="text-gray-600">Date:</span>
+                    <span className="ml-2 font-medium">{format(selectedQuotation.eventDate, 'EEEE, dd MMMM yyyy')}</span>
+                  </div>
+                  <div className="flex items-center">
+                    <Clock className="h-4 w-4 mr-2 text-gray-500" />
+                    <span className="text-gray-600">Time:</span>
+                    <span className="ml-2 font-medium">{selectedQuotation.startTime} - {selectedQuotation.endTime}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Pricing Information */}
+              <div className="bg-green-50 rounded-lg p-4">
+                <h4 className="font-semibold text-lg mb-3 flex items-center">
+                  <DollarSign className="h-5 w-5 mr-2" />
+                  Pricing Information
+                </h4>
+                <div className="space-y-2">
+                  <div className="flex justify-between items-center">
+                    <span className="text-gray-600">Total Amount:</span>
+                    <span className="font-mono font-bold text-xl text-green-600">
+                      ${selectedQuotation.totalAmount.toLocaleString('en-AU', { minimumFractionDigits: 2 })} AUD
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-gray-600">Valid Until:</span>
+                    <span className="font-medium">{format(selectedQuotation.validUntil, 'dd MMM yyyy')}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Notes */}
+              {selectedQuotation.notes && (
+                <div className="bg-yellow-50 rounded-lg p-4">
+                  <h4 className="font-semibold text-lg mb-3 flex items-center">
+                    <FileText className="h-5 w-5 mr-2" />
+                    Additional Notes
+                  </h4>
+                  <p className="text-gray-700 leading-relaxed">{selectedQuotation.notes}</p>
+                </div>
+              )}
+
+              {/* Timestamps */}
+              <div className="bg-gray-50 rounded-lg p-4">
+                <h4 className="font-semibold text-lg mb-3">Timestamps</h4>
+                <div className="space-y-2 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Created:</span>
+                    <span className="font-medium">{format(selectedQuotation.createdAt, 'dd MMM yyyy, HH:mm')}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Last Updated:</span>
+                    <span className="font-medium">{format(selectedQuotation.updatedAt, 'dd MMM yyyy, HH:mm')}</span>
+                  </div>
                 </div>
               </div>
 
