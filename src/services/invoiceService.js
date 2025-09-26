@@ -294,6 +294,45 @@ export const generateInvoiceFromBooking = (booking, invoiceType, amount, descrip
   };
 };
 
+// Download invoice PDF
+export const downloadInvoicePDF = async (invoiceId, token) => {
+  try {
+    const response = await fetch(`${API_BASE_URL}/invoices/${invoiceId}/pdf`, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+      },
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({ message: 'Unknown error' }));
+      throw new Error(`Failed to download invoice PDF: ${response.status} ${response.statusText} - ${errorData.message || 'Unknown error'}`);
+    }
+
+    // Get the filename from the Content-Disposition header
+    const contentDisposition = response.headers.get('Content-Disposition');
+    const filename = contentDisposition 
+      ? contentDisposition.split('filename=')[1]?.replace(/"/g, '') 
+      : `invoice-${invoiceId}.pdf`;
+
+    // Create blob and download
+    const blob = await response.blob();
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    window.URL.revokeObjectURL(url);
+
+    return { success: true, filename };
+  } catch (error) {
+    console.error('Error downloading invoice PDF:', error);
+    throw error;
+  }
+};
+
 // Helper function to calculate invoice summary statistics
 export const calculateInvoiceSummary = (invoices) => {
   const totalAmount = invoices.reduce((sum, inv) => sum + inv.total, 0);

@@ -68,7 +68,7 @@ import { Label } from '@/components/ui/label';
 import { format, addDays, subDays, isAfter, isBefore } from 'date-fns';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '@/contexts/AuthContext';
-import { fetchInvoices, fetchPayments, createInvoice, updateInvoiceStatus, recordPayment, calculateInvoiceSummary, generateInvoiceFromBooking } from '@/services/invoiceService';
+import { fetchInvoices, fetchPayments, createInvoice, updateInvoiceStatus, recordPayment, calculateInvoiceSummary, generateInvoiceFromBooking, downloadInvoicePDF } from '@/services/invoiceService';
 import { fetchBookingsForCalendar } from '@/services/bookingService';
 
 
@@ -186,8 +186,8 @@ const InvoiceActions = ({ invoice, onAction }) => {
         
         {canSend && (
           <DropdownMenuItem onClick={() => onAction('send', invoice.id)}>
-            <Send className="mr-2 h-4 w-4" />
-            Send to Customer
+            <Mail className="mr-2 h-4 w-4" />
+            Send Email to Customer
           </DropdownMenuItem>
         )}
         
@@ -204,6 +204,11 @@ const InvoiceActions = ({ invoice, onAction }) => {
             Record Bank Payment
           </DropdownMenuItem>
         )}
+        
+        <DropdownMenuItem onClick={() => onAction('download-pdf', invoice.id)}>
+          <Download className="mr-2 h-4 w-4" />
+          Download PDF
+        </DropdownMenuItem>
         
         <DropdownMenuItem onClick={() => onAction('receipt', invoice.id)}>
           <Receipt className="mr-2 h-4 w-4" />
@@ -470,7 +475,7 @@ const InvoicesTable = ({
 };
 
 // Magnificent invoice detail pane with ATO compliance
-const InvoiceDetailPane = ({ invoice, onClose }) => {
+const InvoiceDetailPane = ({ invoice, onClose, token }) => {
   if (!invoice) return null;
 
   const gstRate = 0.1;
@@ -634,9 +639,14 @@ const InvoiceDetailPane = ({ invoice, onClose }) => {
           </Button>
           
           <div className="grid grid-cols-2 gap-2">
-            <Button variant="outline" className="bg-white hover:bg-gray-50" size="sm">
-              <Eye className="mr-2 h-4 w-4" />
-              Open in Stripe
+            <Button 
+              variant="outline" 
+              className="bg-white hover:bg-gray-50" 
+              size="sm"
+              onClick={() => downloadInvoicePDF(invoice.id, token)}
+            >
+              <Download className="mr-2 h-4 w-4" />
+              Download PDF
             </Button>
             <Button variant="outline" className="bg-white hover:bg-gray-50" size="sm">
               <FileText className="mr-2 h-4 w-4" />
@@ -984,6 +994,9 @@ export default function Invoices() {
         case 'send':
           await updateInvoiceStatus(invoiceId, 'SENT', token);
           break;
+        case 'download-pdf':
+          await downloadInvoicePDF(invoiceId, token);
+          return; // Don't refresh data for download
         case 'record-payment':
           setSelectedInvoice(invoicesData.find(inv => inv.id === invoiceId));
           setShowPaymentDialog(true);
@@ -1289,6 +1302,7 @@ export default function Invoices() {
           <InvoiceDetailPane 
             invoice={selectedInvoice}
             onClose={handleCloseDetailPane}
+            token={token}
           />
         )}
       </AnimatePresence>
@@ -1447,6 +1461,10 @@ export default function Invoices() {
                     <div>
                       <span className="text-gray-600">Customer:</span>
                       <span className="font-medium text-gray-900 ml-1 truncate block">{selectedBooking.customer}</span>
+                    </div>
+                    <div>
+                      <span className="text-gray-600">Email:</span>
+                      <span className="font-medium text-gray-900 ml-1 truncate block">{selectedBooking.customerEmail || 'N/A'}</span>
                     </div>
                     <div>
                       <span className="text-gray-600">Event:</span>
