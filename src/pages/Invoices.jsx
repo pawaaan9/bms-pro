@@ -735,6 +735,7 @@ export default function Invoices() {
   const [showCreateInvoiceDialog, setShowCreateInvoiceDialog] = useState(false);
   const [showPaymentDialog, setShowPaymentDialog] = useState(false);
   const [selectedBooking, setSelectedBooking] = useState(null);
+  const [bookingSearchTerm, setBookingSearchTerm] = useState('');
   const [newInvoiceData, setNewInvoiceData] = useState({
     invoiceType: 'DEPOSIT',
     amount: '',
@@ -842,6 +843,28 @@ export default function Invoices() {
 
     return filtered;
   }, [invoicesData, searchTerm, activeStatuses, sortConfig]);
+
+  // Filter bookings for invoice creation with search
+  const filteredBookings = useMemo(() => {
+    let filtered = bookingsData.filter(b => ['CONFIRMED', 'PENDING', 'COMPLETED'].includes(b.status));
+
+    // Search filter for bookings
+    if (bookingSearchTerm) {
+      const term = bookingSearchTerm.toLowerCase();
+      filtered = filtered.filter(booking => 
+        booking.customer.toLowerCase().includes(term) ||
+        booking.eventType.toLowerCase().includes(term) ||
+        booking.bookingDate.toLowerCase().includes(term) ||
+        booking.resource.toLowerCase().includes(term) ||
+        booking.status.toLowerCase().includes(term)
+      );
+    }
+
+    // Sort by booking date (newest first)
+    filtered.sort((a, b) => new Date(b.bookingDate) - new Date(a.bookingDate));
+
+    return filtered;
+  }, [bookingsData, bookingSearchTerm]);
 
   // Event handlers
   const handleSort = useCallback((key) => {
@@ -1082,7 +1105,14 @@ export default function Invoices() {
               </Button>
               <Button 
                 className="bg-gradient-to-r from-yellow-400 to-orange-500 hover:from-yellow-500 hover:to-orange-600 text-gray-900 font-semibold shadow-lg"
-                onClick={() => setShowCreateInvoiceDialog(true)}
+                onClick={() => {
+                  console.log('Available bookings for invoice creation:', bookingsData);
+                  console.log('Bookings by status:', bookingsData.reduce((acc, b) => {
+                    acc[b.status] = (acc[b.status] || 0) + 1;
+                    return acc;
+                  }, {}));
+                  setShowCreateInvoiceDialog(true);
+                }}
               >
                 <Plus className="mr-2 h-4 w-4" />
                 New Invoice
@@ -1264,65 +1294,204 @@ export default function Invoices() {
       </AnimatePresence>
 
       {/* Create Invoice Dialog */}
-      <Dialog open={showCreateInvoiceDialog} onOpenChange={setShowCreateInvoiceDialog}>
-        <DialogContent className="max-w-2xl">
+      <Dialog open={showCreateInvoiceDialog} onOpenChange={(open) => {
+        setShowCreateInvoiceDialog(open);
+        if (!open) {
+          setBookingSearchTerm('');
+          setSelectedBooking(null);
+        }
+      }}>
+        <DialogContent className="max-w-2xl w-full mx-4 sm:mx-0 max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Create New Invoice</DialogTitle>
-            <DialogDescription>
-              Select a booking and create an invoice for it.
+            <DialogTitle className="flex items-center gap-2">
+              <div className="p-2 bg-gradient-to-r from-blue-500 to-indigo-500 rounded-lg">
+                <FileText className="h-5 w-5 text-white" />
+              </div>
+              Create New Invoice
+            </DialogTitle>
+            <DialogDescription className="text-gray-600">
+              Select a booking from the list below and create a professional tax invoice for it.
             </DialogDescription>
           </DialogHeader>
           
-          <div className="space-y-4">
+          <div className="space-y-3">
             <div>
-              <Label htmlFor="booking-select">Select Booking</Label>
-              <Select onValueChange={(value) => {
-                const booking = bookingsData.find(b => b.id === value);
-                setSelectedBooking(booking);
-                if (booking) {
-                  setNewInvoiceData(prev => ({
-                    ...prev,
-                    amount: booking.calculatedPrice?.toString() || '',
-                    description: `${booking.eventType} - ${prev.invoiceType} Payment`
-                  }));
-                }
-              }}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Choose a booking..." />
-                </SelectTrigger>
-                <SelectContent>
-                  {bookingsData.filter(b => b.status === 'confirmed').map(booking => (
-                    <SelectItem key={booking.id} value={booking.id}>
-                      {booking.customer} - {booking.eventType} ({booking.bookingDate})
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <Label htmlFor="booking-select" className="text-sm font-medium text-gray-700 mb-1 block">
+                Select Booking
+              </Label>
+              
+              {/* Custom Booking Selector with Search */}
+              <div className="relative">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                  <Input
+                    placeholder="Search bookings by customer, event, or date..."
+                    value={bookingSearchTerm}
+                    onChange={(e) => setBookingSearchTerm(e.target.value)}
+                    className="pl-10 pr-4 py-2 w-full border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  />
+                  {bookingSearchTerm && (
+                    <button
+                      onClick={() => setBookingSearchTerm('')}
+                      className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                    >
+                      <XCircle className="h-4 w-4" />
+                    </button>
+                  )}
+                </div>
+                
+                {/* Booking List */}
+                <div className="mt-2 border border-gray-200 rounded-lg bg-white shadow-sm max-h-60 overflow-y-auto">
+                  {filteredBookings.length > 0 ? (
+                    <div className="p-2">
+                      {filteredBookings.map(booking => (
+                        <div
+                          key={booking.id}
+                          onClick={() => {
+                            setSelectedBooking(booking);
+                            if (booking) {
+                              setNewInvoiceData(prev => ({
+                                ...prev,
+                                amount: booking.calculatedPrice?.toString() || '',
+                                description: `${booking.eventType} - ${prev.invoiceType} Payment`
+                              }));
+                            }
+                          }}
+                          className={`p-3 rounded-lg cursor-pointer transition-all duration-200 hover:bg-gray-50 border ${
+                            selectedBooking?.id === booking.id 
+                              ? 'bg-blue-50 border-blue-200 ring-2 ring-blue-100' 
+                              : 'border-transparent hover:border-gray-200'
+                          }`}
+                        >
+                          <div className="flex items-start gap-3">
+                            <div className="flex-shrink-0 mt-1">
+                              <div className={`w-3 h-3 rounded-full ${
+                                booking.status === 'CONFIRMED' ? 'bg-green-500' :
+                                booking.status === 'PENDING' ? 'bg-yellow-500' :
+                                booking.status === 'COMPLETED' ? 'bg-blue-500' :
+                                'bg-gray-400'
+                              }`}></div>
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-2">
+                                <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+                                  <span className="font-semibold text-gray-900 truncate">
+                                    {booking.customer}
+                                  </span>
+                                  <span className={`px-2 py-0.5 text-xs font-medium rounded-full whitespace-nowrap ${
+                                    booking.status === 'CONFIRMED' ? 'bg-green-100 text-green-700' :
+                                    booking.status === 'PENDING' ? 'bg-yellow-100 text-yellow-700' :
+                                    booking.status === 'COMPLETED' ? 'bg-blue-100 text-blue-700' :
+                                    'bg-gray-100 text-gray-700'
+                                  }`}>
+                                    {booking.status}
+                                  </span>
+                                </div>
+                                {booking.calculatedPrice && (
+                                  <span className="font-mono font-semibold text-green-600 text-sm">
+                                    ${booking.calculatedPrice.toLocaleString('en-AU', { minimumFractionDigits: 2 })} AUD
+                                  </span>
+                                )}
+                              </div>
+                              <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2 text-sm text-gray-600">
+                                <span className="font-medium">{booking.eventType}</span>
+                                <span className="hidden sm:inline text-gray-400">•</span>
+                                <span>{booking.bookingDate}</span>
+                                <span className="hidden sm:inline text-gray-400">•</span>
+                                <span className="text-xs text-gray-500 truncate">{booking.resource}</span>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="px-4 py-8 text-center">
+                      <div className="text-gray-400 mb-2">
+                        <Calendar className="h-8 w-8 mx-auto" />
+                      </div>
+                      <p className="text-sm text-gray-500 font-medium">
+                        {bookingSearchTerm ? 'No bookings match your search' : 'No bookings available for invoicing'}
+                      </p>
+                      <p className="text-xs text-gray-400 mt-1">
+                        {bookingSearchTerm ? 'Try adjusting your search terms' : 'Create some bookings first to generate invoices'}
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </div>
             </div>
 
             {selectedBooking && (
               <>
-                <div className="grid grid-cols-2 gap-4">
+                {/* Selected Booking Preview */}
+                <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg p-3 mb-3">
+                  <div className="flex items-center gap-2 mb-2">
+                    <div className={`w-2 h-2 rounded-full ${
+                      selectedBooking.status === 'CONFIRMED' ? 'bg-green-500' :
+                      selectedBooking.status === 'PENDING' ? 'bg-yellow-500' :
+                      selectedBooking.status === 'COMPLETED' ? 'bg-blue-500' :
+                      'bg-gray-400'
+                    }`}></div>
+                    <h3 className="font-semibold text-gray-900 text-sm">Selected Booking</h3>
+                    <span className={`px-2 py-0.5 text-xs font-medium rounded-full ${
+                      selectedBooking.status === 'CONFIRMED' ? 'bg-green-100 text-green-700' :
+                      selectedBooking.status === 'PENDING' ? 'bg-yellow-100 text-yellow-700' :
+                      selectedBooking.status === 'COMPLETED' ? 'bg-blue-100 text-blue-700' :
+                      'bg-gray-100 text-gray-700'
+                    }`}>
+                      {selectedBooking.status}
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2 text-xs">
+                    <div>
+                      <span className="text-gray-600">Customer:</span>
+                      <span className="font-medium text-gray-900 ml-1 truncate block">{selectedBooking.customer}</span>
+                    </div>
+                    <div>
+                      <span className="text-gray-600">Event:</span>
+                      <span className="font-medium text-gray-900 ml-1 truncate block">{selectedBooking.eventType}</span>
+                    </div>
+                    <div>
+                      <span className="text-gray-600">Date:</span>
+                      <span className="font-medium text-gray-900 ml-1">{selectedBooking.bookingDate}</span>
+                    </div>
+                    <div>
+                      <span className="text-gray-600">Resource:</span>
+                      <span className="font-medium text-gray-900 ml-1 truncate block">{selectedBooking.resource}</span>
+                    </div>
+                    {selectedBooking.calculatedPrice && (
+                      <div className="col-span-2">
+                        <span className="text-gray-600">Total:</span>
+                        <span className="font-mono font-semibold text-green-600 ml-1">
+                          ${selectedBooking.calculatedPrice.toLocaleString('en-AU', { minimumFractionDigits: 2 })} AUD
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
-                    <Label htmlFor="invoice-type">Invoice Type</Label>
+                    <Label htmlFor="invoice-type" className="text-sm font-medium text-gray-700">Invoice Type</Label>
                     <Select 
                       value={newInvoiceData.invoiceType} 
                       onValueChange={(value) => setNewInvoiceData(prev => ({ ...prev, invoiceType: value }))}
                     >
-                      <SelectTrigger>
+                      <SelectTrigger className="mt-1 h-9">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="DEPOSIT">Deposit</SelectItem>
-                        <SelectItem value="FINAL">Final Payment</SelectItem>
-                        <SelectItem value="BOND">Bond</SelectItem>
-                        <SelectItem value="ADD-ONS">Add-ons</SelectItem>
+                        <SelectItem value="DEPOSIT">💰 Deposit</SelectItem>
+                        <SelectItem value="FINAL">💳 Final Payment</SelectItem>
+                        <SelectItem value="BOND">🔒 Bond</SelectItem>
+                        <SelectItem value="ADD-ONS">➕ Add-ons</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
                   
                   <div>
-                    <Label htmlFor="amount">Amount (AUD)</Label>
+                    <Label htmlFor="amount" className="text-sm font-medium text-gray-700">Amount (AUD)</Label>
                     <Input
                       id="amount"
                       type="number"
@@ -1330,40 +1499,49 @@ export default function Invoices() {
                       value={newInvoiceData.amount}
                       onChange={(e) => setNewInvoiceData(prev => ({ ...prev, amount: e.target.value }))}
                       placeholder="0.00"
+                      className="font-mono mt-1 h-9"
                     />
                   </div>
                 </div>
 
                 <div>
-                  <Label htmlFor="description">Description</Label>
+                  <Label htmlFor="description" className="text-sm font-medium text-gray-700">Description</Label>
                   <Textarea
                     id="description"
                     value={newInvoiceData.description}
                     onChange={(e) => setNewInvoiceData(prev => ({ ...prev, description: e.target.value }))}
                     placeholder="Invoice description..."
+                    className="mt-1"
+                    rows={2}
                   />
                 </div>
 
                 <div>
-                  <Label htmlFor="due-date">Due Date</Label>
+                  <Label htmlFor="due-date" className="text-sm font-medium text-gray-700">Due Date</Label>
                   <Input
                     id="due-date"
                     type="date"
                     value={newInvoiceData.dueDate}
                     onChange={(e) => setNewInvoiceData(prev => ({ ...prev, dueDate: e.target.value }))}
+                    className="mt-1 h-9"
                   />
                 </div>
               </>
             )}
           </div>
 
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowCreateInvoiceDialog(false)}>
+          <DialogFooter className="flex flex-col sm:flex-row gap-2 sm:gap-0 sm:justify-end pt-3">
+            <Button 
+              variant="outline" 
+              onClick={() => setShowCreateInvoiceDialog(false)}
+              className="w-full sm:w-auto order-2 sm:order-1 h-9"
+            >
               Cancel
             </Button>
             <Button 
               onClick={handleCreateInvoice}
               disabled={!selectedBooking || !newInvoiceData.amount}
+              className="w-full sm:w-auto order-1 sm:order-2 h-9"
             >
               Create Invoice
             </Button>
