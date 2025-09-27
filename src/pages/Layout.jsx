@@ -37,7 +37,6 @@ const navigationItems = [
   icon: FileText,
   children: [
   { title: "All", url: createPageUrl("BookingsAll") },
-  { title: "Pending Review", url: createPageUrl("BookingsPending") },
   { title: "Holds (Tentative)", url: createPageUrl("BookingsHolds") },
   { title: "Confirmed", url: createPageUrl("BookingsConfirmed") },
   { title: "Completed", url: createPageUrl("BookingsCompleted") },
@@ -236,7 +235,6 @@ export default function Layout({ children, currentPageName }) {
       // Map child titles to their corresponding page names for permission checking
       const childToPageMap = {
         'All': 'BookingsAll',
-        'Pending Review': 'BookingsPending',
         'Holds (Tentative)': 'BookingsHolds',
         'Confirmed': 'BookingsConfirmed',
         'Completed': 'BookingsCompleted',
