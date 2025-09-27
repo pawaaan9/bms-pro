@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -13,6 +13,10 @@ import {
   Eye,
   XCircle,
   Link2,
+  CheckCircle,
+  Users,
+  RefreshCw,
+  Calendar,
 } from 'lucide-react';
 import {
   Table,
@@ -39,95 +43,147 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { format, addHours, addDays, differenceInHours, differenceInMinutes } from 'date-fns';
+import { useAuth } from '../contexts/AuthContext';
 
-// Sample holds data
-const generateSampleHolds = () => {
-  const now = new Date();
-  return [
-    {
-      id: 'BKG-2201',
-      customer: { name: 'Emma Thompson', email: 'emma.t@events.com' },
-      resource: 'Hall A',
-      start: addDays(now, 2),
-      end: addHours(addDays(now, 2), 4),
-      purpose: 'Art Exhibition Opening',
-      guests: 75,
-      holdExpiresAt: addHours(now, 5),
-      depositStatus: 'link_sent',
-      createdAt: addHours(now, -18),
-      paymentLink: 'https://checkout.stripe.com/...',
+// Transform backend booking data to match frontend format
+const transformBookingData = (backendBooking) => {
+  const [year, month, day] = backendBooking.bookingDate.split('-').map(Number);
+  const [startHour, startMin] = backendBooking.startTime.split(':').map(Number);
+  const [endHour, endMin] = backendBooking.endTime.split(':').map(Number);
+  
+  const startDateTime = new Date(year, month - 1, day, startHour, startMin, 0);
+  const endDateTime = new Date(year, month - 1, day, endHour, endMin, 0);
+  
+  return {
+    id: backendBooking.id,
+    customer: {
+      name: backendBooking.customerName,
+      email: backendBooking.customerEmail,
+      phone: backendBooking.customerPhone,
     },
-    {
-      id: 'BKG-2202',
-      customer: { name: 'David Kim', email: 'david.kim@startup.io' },
-      resource: 'Main Hall',
-      start: addDays(now, 5),
-      end: addHours(addDays(now, 5), 6),
-      purpose: 'Product Launch Event',
-      guests: 200,
-      holdExpiresAt: addHours(now, 1),
-      depositStatus: 'not_sent',
-      createdAt: addHours(now, -30),
-      paymentLink: null,
-    },
-    {
-      id: 'BKG-2203',
-      customer: { name: 'Lisa Johnson', email: 'lisa.j@community.org' },
-      resource: 'Hall B',
-      start: addDays(now, 3),
-      end: addHours(addDays(now, 3), 3),
-      purpose: 'Community Workshop',
-      guests: 40,
-      holdExpiresAt: addHours(now, 20),
-      depositStatus: 'paid',
-      createdAt: addHours(now, -12),
-      paymentLink: 'https://checkout.stripe.com/...',
-    },
-    {
-      id: 'BKG-2204',
-      customer: { name: 'Michael Rodriguez', email: 'm.rodriguez@corp.com' },
-      resource: 'Conference Room',
-      start: addDays(now, 1),
-      end: addHours(addDays(now, 1), 2),
-      purpose: 'Board Meeting',
-      guests: 15,
-      holdExpiresAt: addHours(now, -2), // Expired
-      depositStatus: 'not_sent',
-      createdAt: addHours(now, -50),
-      paymentLink: null,
-    },
-  ];
+    resource: backendBooking.hallName || backendBooking.selectedHall,
+    start: startDateTime,
+    end: endDateTime,
+    status: backendBooking.status || 'pending',
+    totalValue: backendBooking.calculatedPrice || 0,
+    guests: backendBooking.guestCount || 0,
+    purpose: backendBooking.eventType || 'Event',
+    notes: backendBooking.additionalDescription || '',
+    createdAt: backendBooking.createdAt ? new Date(backendBooking.createdAt) : new Date(),
+    lastModified: backendBooking.updatedAt ? new Date(backendBooking.updatedAt) : new Date(),
+    customerPhone: backendBooking.customerPhone,
+    customerAvatar: backendBooking.customerAvatar,
+    bookingSource: backendBooking.bookingSource,
+    priceDetails: backendBooking.priceDetails,
+  };
 };
 
 export default function BookingsHolds() {
-  const [bookings, setBookings] = useState(generateSampleHolds());
+  const { user } = useAuth();
+  const [bookings, setBookings] = useState([]);
   const [filteredBookings, setFilteredBookings] = useState([]);
   const [selectedRows, setSelectedRows] = useState(new Set());
   const [searchTerm, setSearchTerm] = useState('');
   const [showExpired, setShowExpired] = useState(false);
   const [selectedBooking, setSelectedBooking] = useState(null);
   const [isDetailPaneOpen, setIsDetailPaneOpen] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [refreshing, setRefreshing] = useState(false);
   
   // Dialog states
-  const [extendDialog, setExtendDialog] = useState({ open: false, booking: null });
-  const [releaseDialog, setReleaseDialog] = useState({ open: false, booking: null });
-  const [customExtension, setCustomExtension] = useState('');
-  const [releaseReason, setReleaseReason] = useState('');
+  const [confirmDialog, setConfirmDialog] = useState({ open: false, booking: null });
+  const [cancelDialog, setCancelDialog] = useState({ open: false, booking: null });
+  const [cancelReason, setCancelReason] = useState('');
+  
+  // Toast notification state
+  const [toast, setToast] = useState({
+    isVisible: false,
+    type: 'success',
+    title: '',
+    message: ''
+  });
 
-  // Timer state for live updates
-  const [currentTime, setCurrentTime] = useState(new Date());
+  // Fetch pending booking requests from backend
+  const fetchPendingBookings = useCallback(async (isRefresh = false) => {
+    if (!user?.id) {
+      console.log('No user ID available:', user);
+      return;
+    }
+    
+    try {
+      if (isRefresh) {
+        setRefreshing(true);
+      } else {
+        setLoading(true);
+      }
+      setError(null);
 
+      const token = localStorage.getItem('token');
+      if (!token) {
+        throw new Error('No authentication token found');
+      }
+
+      // Determine the correct hall owner ID to fetch bookings for
+      let hallOwnerId = user.id;
+      if (user.role === 'sub_user' && user.parentUserId) {
+        hallOwnerId = user.parentUserId;
+      }
+
+      console.log('Fetching pending bookings for hall owner ID:', hallOwnerId);
+      
+      // Fetch only pending bookings from backend
+      const response = await fetch(`http://localhost:5000/api/bookings/hall-owner/${hallOwnerId}?status=pending`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ message: 'Unknown error' }));
+        console.error('Backend error response:', errorData);
+        throw new Error(`Failed to fetch pending bookings: ${response.status} ${response.statusText} - ${errorData.message || 'Unknown error'}`);
+      }
+
+      const backendBookings = await response.json();
+      console.log('Received bookings from backend:', backendBookings);
+      
+      // Transform and filter for pending status only
+      const transformedBookings = backendBookings
+        .map(transformBookingData)
+        .filter(booking => booking.status === 'pending' || booking.status === 'PENDING');
+      
+      console.log('Filtered pending bookings:', transformedBookings);
+      
+      setBookings(transformedBookings);
+      setFilteredBookings(transformedBookings);
+      
+    } catch (err) {
+      console.error('Error fetching pending bookings:', err);
+      setError(err.message);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  }, [user]);
+
+  // Fetch bookings on component mount and when user changes
   useEffect(() => {
-    const timer = setInterval(() => {
-      setCurrentTime(new Date());
-    }, 60000); // Update every minute
-
-    return () => clearInterval(timer);
-  }, []);
+    if (user?.id) {
+      fetchPendingBookings();
+    }
+  }, [user?.id, fetchPendingBookings]);
 
   // Filter bookings
   useEffect(() => {
     let filtered = bookings;
+
+    // Ensure we only show pending bookings
+    filtered = filtered.filter(booking => 
+      booking.status === 'pending' || booking.status === 'PENDING'
+    );
 
     // Search filter
     if (searchTerm) {
@@ -135,130 +191,217 @@ export default function BookingsHolds() {
       filtered = filtered.filter(booking =>
         booking.id.toLowerCase().includes(term) ||
         booking.customer.name.toLowerCase().includes(term) ||
-        booking.customer.email.toLowerCase().includes(term)
+        booking.customer.email.toLowerCase().includes(term) ||
+        booking.purpose.toLowerCase().includes(term) ||
+        booking.resource.toLowerCase().includes(term)
       );
     }
 
-    // Show expired filter
-    if (!showExpired) {
-      filtered = filtered.filter(booking => booking.holdExpiresAt > currentTime);
-    }
-
     setFilteredBookings(filtered);
-  }, [bookings, searchTerm, showExpired, currentTime]);
+  }, [bookings, searchTerm]);
 
-  const getTimeRemaining = (expiresAt) => {
-    const now = currentTime;
-    if (expiresAt <= now) return { text: 'Expired', className: 'text-red-600', urgent: false };
-
-    const totalMinutes = differenceInMinutes(expiresAt, now);
+  const getTimeSinceRequest = (createdAt) => {
+    const now = new Date();
+    const totalMinutes = differenceInMinutes(now, createdAt);
     const hours = Math.floor(totalMinutes / 60);
     const minutes = totalMinutes % 60;
 
     let text = '';
     if (hours > 0) {
-      text = `${hours}h ${minutes}m`;
+      text = `${hours}h ${minutes}m ago`;
     } else {
-      text = `${minutes}m`;
+      text = `${minutes}m ago`;
     }
 
+    const isRecent = totalMinutes <= 60; // 1 hour
     const isUrgent = totalMinutes <= 120; // 2 hours
-    const isWarning = totalMinutes <= 720; // 12 hours
 
     return {
       text,
-      className: isUrgent ? 'text-red-600 font-bold' : isWarning ? 'text-orange-600 font-medium' : 'text-gray-900',
+      className: isRecent ? 'text-green-600 font-medium' : isUrgent ? 'text-orange-600 font-medium' : 'text-gray-900',
       urgent: isUrgent,
     };
   };
 
-  const getDepositStatusBadge = (status) => {
+  const getStatusBadge = (status) => {
     const statusMap = {
-      not_sent: { text: 'Not sent', className: 'bg-gray-100 text-gray-800' },
-      link_sent: { text: 'Link sent', className: 'bg-blue-100 text-blue-800' },
-      paid: { text: 'Paid', className: 'bg-green-100 text-green-800' },
+      pending: { text: 'Pending Review', className: 'bg-yellow-100 text-yellow-800' },
+      confirmed: { text: 'Confirmed', className: 'bg-green-100 text-green-800' },
+      cancelled: { text: 'Cancelled', className: 'bg-red-100 text-red-800' },
     };
     
-    const config = statusMap[status] || statusMap.not_sent;
+    const config = statusMap[status] || statusMap.pending;
     return <Badge className={config.className}>{config.text}</Badge>;
   };
 
-  const handleExtend = (booking) => {
-    setExtendDialog({ open: true, booking });
+  const handleConfirm = (booking) => {
+    setConfirmDialog({ open: true, booking });
   };
 
-  const handleRelease = (booking) => {
-    setReleaseDialog({ open: true, booking });
+  const handleCancel = (booking) => {
+    setCancelDialog({ open: true, booking });
   };
 
-  const confirmExtend = (extension) => {
-    const booking = extendDialog.booking;
-    let newExpiryTime;
+  const confirmBooking = async () => {
+    const booking = confirmDialog.booking;
     
-    if (extension === 'custom' && customExtension) {
-      const hours = parseInt(customExtension);
-      newExpiryTime = addHours(booking.holdExpiresAt, hours);
-    } else {
-      const extensionMap = {
-        '2h': 2,
-        '6h': 6,
-        '24h': 24,
-      };
-      newExpiryTime = addHours(booking.holdExpiresAt, extensionMap[extension] || 2);
-    }
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        throw new Error('No authentication token found');
+      }
 
-    // Update booking
-    setBookings(prev => prev.map(b => 
-      b.id === booking.id 
-        ? { ...b, holdExpiresAt: newExpiryTime }
-        : b
-    ));
+      console.log('Confirming booking:', booking.id);
+      
+      const response = await fetch(`http://localhost:5000/api/bookings/${booking.id}/status`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ status: 'confirmed' })
+      });
 
-    console.log(`Extended ${booking.id} until ${format(newExpiryTime, 'dd MMM yyyy HH:mm OOOO')}`);
-    setExtendDialog({ open: false, booking: null });
-    setCustomExtension('');
-  };
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ message: 'Unknown error' }));
+        throw new Error(`Failed to confirm booking: ${response.status} ${response.statusText} - ${errorData.message || 'Unknown error'}`);
+      }
 
-  const confirmRelease = () => {
-    const booking = releaseDialog.booking;
-    console.log(`Released ${booking.id}: ${releaseReason}`);
-    
-    // Remove from holds list
-    setBookings(prev => prev.filter(b => b.id !== booking.id));
-    setReleaseDialog({ open: false, booking: null });
-    setReleaseReason('');
-  };
+      const result = await response.json();
+      console.log('Booking confirmed successfully:', result);
 
-  const handleSendPaymentLink = (booking) => {
-    if (booking.paymentLink) {
-      navigator.clipboard.writeText(booking.paymentLink);
-      console.log(`Copied payment link for ${booking.id}`);
-    } else {
-      // Create new payment link
-      const newLink = `https://checkout.stripe.com/pay/cs_${booking.id}`;
-      setBookings(prev => prev.map(b => 
-        b.id === booking.id 
-          ? { ...b, paymentLink: newLink, depositStatus: 'link_sent' }
-          : b
-      ));
-      console.log(`Created payment link for ${booking.id}`);
+      // Update local state optimistically
+      setBookings(prev => prev.filter(b => b.id !== booking.id));
+      setFilteredBookings(prev => prev.filter(b => b.id !== booking.id));
+
+      // Close modal and show success
+      setConfirmDialog({ open: false, booking: null });
+      setToast({
+        isVisible: true,
+        type: 'success',
+        title: 'Booking Confirmed!',
+        message: `${booking.customer.name}'s booking request has been confirmed.`
+      });
+      
+    } catch (err) {
+      console.error('Error confirming booking:', err);
+      setToast({
+        isVisible: true,
+        type: 'error',
+        title: 'Error Confirming Booking',
+        message: err.message
+      });
     }
   };
 
-  const isExpired = (expiresAt) => expiresAt <= currentTime;
+  const cancelBooking = async () => {
+    const booking = cancelDialog.booking;
+    
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        throw new Error('No authentication token found');
+      }
+
+      console.log('Cancelling booking:', booking.id);
+      
+      const response = await fetch(`http://localhost:5000/api/bookings/${booking.id}/status`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ status: 'cancelled' })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ message: 'Unknown error' }));
+        throw new Error(`Failed to cancel booking: ${response.status} ${response.statusText} - ${errorData.message || 'Unknown error'}`);
+      }
+
+      const result = await response.json();
+      console.log('Booking cancelled successfully:', result);
+
+      // Update local state optimistically
+      setBookings(prev => prev.filter(b => b.id !== booking.id));
+      setFilteredBookings(prev => prev.filter(b => b.id !== booking.id));
+
+      // Close modal and show success
+      setCancelDialog({ open: false, booking: null });
+      setToast({
+        isVisible: true,
+        type: 'success',
+        title: 'Booking Cancelled!',
+        message: `${booking.customer.name}'s booking request has been cancelled.`
+      });
+      
+    } catch (err) {
+      console.error('Error cancelling booking:', err);
+      setToast({
+        isVisible: true,
+        type: 'error',
+        title: 'Error Cancelling Booking',
+        message: err.message
+      });
+    }
+  };
+
+  const handleRefresh = () => {
+    fetchPendingBookings(true);
+  };
+
+  const handleExport = () => {
+    const csv = [
+      [
+        'Booking ID', 'Customer', 'Email', 'Resource', 'Start Date', 'Start Time',
+        'End Date', 'End Time', 'Status', 'Guests', 'Purpose', 'Total Value', 'Created Date'
+      ],
+      ...filteredBookings.map(booking => [
+        booking.id,
+        booking.customer.name,
+        booking.customer.email,
+        booking.resource,
+        format(booking.start, 'dd/MM/yyyy'),
+        format(booking.start, 'HH:mm'),
+        format(booking.end, 'dd/MM/yyyy'),
+        format(booking.end, 'HH:mm'),
+        booking.status,
+        booking.guests,
+        booking.purpose,
+        `$${booking.totalValue.toLocaleString('en-AU')}`,
+        format(booking.createdAt, 'dd/MM/yyyy HH:mm'),
+      ])
+    ].map(row => row.map(field => `"${field}"`).join(',')).join('\n');
+
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `booking_requests_export_${format(new Date(), 'yyyy-MM-dd_HH-mm')}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
 
   return (
     <main className="space-y-6">
       {/* Header */}
       <header className="flex flex-wrap items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Bookings — Holds (Tentative)</h1>
+          <h1 className="text-3xl font-bold text-gray-900">Booking Requests</h1>
           <p className="mt-1 text-gray-500">
-            Provisional bookings with a hold expiry. Extend, release or convert to confirmed.
+            Pending booking requests awaiting your confirmation or cancellation. Only bookings with "pending" status are shown.
           </p>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline">
+          <Button 
+            variant="outline" 
+            onClick={handleRefresh}
+            disabled={refreshing}
+          >
+            <RefreshCw className={`mr-2 h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
+            {refreshing ? 'Refreshing...' : 'Refresh'}
+          </Button>
+          <Button variant="outline" onClick={handleExport}>
             <Download className="mr-2 h-4 w-4" />
             Export CSV
           </Button>
@@ -272,7 +415,7 @@ export default function BookingsHolds() {
             <div className="relative flex-1 max-w-sm">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
               <Input
-                placeholder="Search holds..."
+                placeholder="Search booking requests..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="pl-10"
@@ -295,16 +438,12 @@ export default function BookingsHolds() {
               </SelectContent>
             </Select>
             <div className="flex gap-2">
-              <Button variant="outline" size="sm" className="bg-orange-50 border-orange-200 text-orange-700">
-                Expiring soon
+              <Button variant="outline" size="sm" className="bg-yellow-50 border-yellow-200 text-yellow-700">
+                <AlertTriangle className="h-3 w-3 mr-1" />
+                Pending Only
               </Button>
-              <Button 
-                variant="outline" 
-                size="sm"
-                onClick={() => setShowExpired(!showExpired)}
-                className={showExpired ? 'bg-gray-50 border-gray-300' : ''}
-              >
-                {showExpired ? '✓ ' : ''}Show expired
+              <Button variant="outline" size="sm" className="bg-blue-50 border-blue-200 text-blue-700">
+                Recent requests
               </Button>
             </div>
           </div>
@@ -328,7 +467,7 @@ export default function BookingsHolds() {
                           setSelectedRows(new Set());
                         }
                       }}
-                      aria-label="Select all holds"
+                      aria-label="Select all booking requests"
                     />
                   </TableHead>
                   <TableHead>
@@ -344,26 +483,46 @@ export default function BookingsHolds() {
                   <TableHead>End</TableHead>
                   <TableHead>
                     <button className="flex items-center gap-2 font-medium">
-                      Expires In
+                      Requested
                       <Clock className="h-4 w-4" />
                     </button>
                   </TableHead>
                   <TableHead>Resource</TableHead>
-                  <TableHead>Deposit</TableHead>
+                  <TableHead>Status</TableHead>
                   <TableHead>Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredBookings.length > 0 ? (
+                {loading ? (
+                  <TableRow>
+                    <TableCell colSpan={8} className="h-24 text-center">
+                      <div className="flex items-center justify-center">
+                        <RefreshCw className="h-6 w-6 animate-spin mr-2" />
+                        Loading booking requests...
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ) : error ? (
+                  <TableRow>
+                    <TableCell colSpan={8} className="h-24 text-center">
+                      <div className="text-center">
+                        <AlertTriangle className="h-6 w-6 mx-auto mb-2 text-red-500" />
+                        <p className="text-red-600 mb-2">{error}</p>
+                        <Button onClick={handleRefresh} variant="outline" size="sm">
+                          Try Again
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ) : filteredBookings.length > 0 ? (
                   filteredBookings.map((booking) => {
-                    const timeRemaining = getTimeRemaining(booking.holdExpiresAt);
-                    const expired = isExpired(booking.holdExpiresAt);
+                    const timeSinceRequest = getTimeSinceRequest(booking.createdAt);
                     
                     return (
                       <TableRow
                         key={booking.id}
                         data-state={selectedRows.has(booking.id) ? 'selected' : ''}
-                        className={`cursor-pointer ${expired ? 'opacity-60' : ''}`}
+                        className="cursor-pointer hover:bg-gray-50"
                         onClick={() => {
                           setSelectedBooking(booking);
                           setIsDetailPaneOpen(true);
@@ -397,46 +556,34 @@ export default function BookingsHolds() {
                           <div className="text-sm text-gray-500">{format(booking.end, 'HH:mm')}</div>
                         </TableCell>
                         <TableCell>
-                          <div className={`flex items-center gap-2 ${timeRemaining.className}`} role="timer">
-                            {timeRemaining.urgent && <AlertTriangle className="h-4 w-4" />}
-                            <span>{timeRemaining.text}</span>
+                          <div className={`flex items-center gap-2 ${timeSinceRequest.className}`}>
+                            {timeSinceRequest.urgent && <AlertTriangle className="h-4 w-4" />}
+                            <span>{timeSinceRequest.text}</span>
                           </div>
                           <div className="text-xs text-gray-500 mt-1">
-                            Expires {format(booking.holdExpiresAt, 'dd MMM HH:mm OOOO')}
+                            Created {format(booking.createdAt, 'dd MMM HH:mm')}
                           </div>
                         </TableCell>
                         <TableCell>{booking.resource}</TableCell>
                         <TableCell>
-                          {getDepositStatusBadge(booking.depositStatus)}
+                          {getStatusBadge(booking.status)}
                         </TableCell>
                         <TableCell onClick={(e) => e.stopPropagation()}>
                           <div className="flex gap-1">
-                            {!expired && (
-                              <>
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  onClick={() => handleExtend(booking)}
-                                  title="Extend hold"
-                                >
-                                  <Plus className="h-4 w-4" />
-                                </Button>
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  onClick={() => handleSendPaymentLink(booking)}
-                                  title="Send payment link"
-                                  className="text-blue-700 border-blue-200 hover:bg-blue-50"
-                                >
-                                  {booking.paymentLink ? <Link2 className="h-4 w-4" /> : <Send className="h-4 w-4" />}
-                                </Button>
-                              </>
-                            )}
                             <Button
                               size="sm"
                               variant="outline"
-                              onClick={() => handleRelease(booking)}
-                              title="Release hold"
+                              onClick={() => handleConfirm(booking)}
+                              title="Confirm booking"
+                              className="text-green-700 border-green-200 hover:bg-green-50"
+                            >
+                              <CheckCircle className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => handleCancel(booking)}
+                              title="Cancel booking"
                               className="text-red-700 border-red-200 hover:bg-red-50"
                             >
                               <XCircle className="h-4 w-4" />
@@ -461,10 +608,14 @@ export default function BookingsHolds() {
                   <TableRow>
                     <TableCell colSpan={8} className="h-24 text-center">
                       <div className="flex flex-col items-center gap-2">
-                        <p>No holds found.</p>
+                        <Calendar className="h-8 w-8 text-gray-400" />
+                        <p>No booking requests found.</p>
+                        <p className="text-sm text-gray-500">
+                          {searchTerm ? 'Try adjusting your search terms' : 'No pending booking requests found. New pending requests will appear here.'}
+                        </p>
                         {searchTerm && (
                           <Button variant="link" onClick={() => setSearchTerm('')}>
-                            Clear filters
+                            Clear search
                           </Button>
                         )}
                       </div>
@@ -483,7 +634,7 @@ export default function BookingsHolds() {
           <div className="fixed inset-0 bg-black/50" onClick={() => setIsDetailPaneOpen(false)} />
           <div className="fixed right-0 top-0 h-full w-96 bg-white shadow-xl p-6 overflow-y-auto">
             <div className="flex items-center justify-between mb-6">
-              <h2 className="text-xl font-semibold">Hold Details</h2>
+              <h2 className="text-xl font-semibold">Booking Request Details</h2>
               <Button variant="ghost" size="icon" onClick={() => setIsDetailPaneOpen(false)}>
                 <XCircle className="h-5 w-5" />
               </Button>
@@ -494,7 +645,7 @@ export default function BookingsHolds() {
                 <h3 className="font-bold text-lg">{selectedBooking.purpose}</h3>
                 <p className="text-gray-600">for {selectedBooking.customer.name}</p>
                 <Badge variant="outline" className="bg-yellow-50 text-yellow-800 border-yellow-200 mt-2">
-                  Tentative Hold
+                  Pending Review
                 </Badge>
               </div>
 
@@ -512,6 +663,10 @@ export default function BookingsHolds() {
                   <span>{selectedBooking.guests}</span>
                 </div>
                 <div className="flex justify-between">
+                  <span className="text-gray-600">Total Value:</span>
+                  <span className="font-medium">${selectedBooking.totalValue?.toLocaleString('en-AU') || '0'}</span>
+                </div>
+                <div className="flex justify-between">
                   <span className="text-gray-600">Event Date:</span>
                   <div className="text-right">
                     <div>{format(selectedBooking.start, 'dd MMM yyyy')}</div>
@@ -522,74 +677,72 @@ export default function BookingsHolds() {
                 </div>
               </div>
 
-              {/* Hold Status */}
-              <div className="border rounded-lg p-4 bg-yellow-50">
-                <h4 className="font-semibold text-yellow-800 mb-2 flex items-center gap-2">
+              {/* Request Status */}
+              <div className="border rounded-lg p-4 bg-blue-50">
+                <h4 className="font-semibold text-blue-800 mb-2 flex items-center gap-2">
                   <Clock className="h-4 w-4" />
-                  Hold Status
+                  Request Status
                 </h4>
                 <div className="space-y-2 text-sm">
                   <div className="flex justify-between">
-                    <span>Expires:</span>
+                    <span>Requested:</span>
                     <div className="text-right">
-                      <div className="font-medium">{getTimeRemaining(selectedBooking.holdExpiresAt).text}</div>
+                      <div className="font-medium">{getTimeSinceRequest(selectedBooking.createdAt).text}</div>
                       <div className="text-xs text-gray-600">
-                        {format(selectedBooking.holdExpiresAt, 'dd MMM yyyy HH:mm OOOO')}
+                        {format(selectedBooking.createdAt, 'dd MMM yyyy HH:mm')}
                       </div>
                     </div>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Status:</span>
+                    {getStatusBadge(selectedBooking.status)}
                   </div>
                 </div>
               </div>
 
-              {/* Deposit Status */}
+              {/* Customer Information */}
               <div className="border rounded-lg p-4">
                 <h4 className="font-semibold mb-2 flex items-center gap-2">
-                  <Send className="h-4 w-4" />
-                  Deposit
+                  <Users className="h-4 w-4" />
+                  Customer Information
                 </h4>
-                <div className="space-y-2">
+                <div className="space-y-2 text-sm">
                   <div className="flex justify-between">
-                    <span>Status:</span>
-                    {getDepositStatusBadge(selectedBooking.depositStatus)}
+                    <span>Name:</span>
+                    <span className="font-medium">{selectedBooking.customer.name}</span>
                   </div>
-                  {selectedBooking.paymentLink && (
-                    <Button variant="link" size="sm" className="p-0 h-auto">
-                      Copy payment link
-                    </Button>
+                  <div className="flex justify-between">
+                    <span>Email:</span>
+                    <span className="text-blue-600">{selectedBooking.customer.email}</span>
+                  </div>
+                  {selectedBooking.customer.phone && (
+                    <div className="flex justify-between">
+                      <span>Phone:</span>
+                      <span>{selectedBooking.customer.phone}</span>
+                    </div>
                   )}
                 </div>
               </div>
 
               <div className="space-y-2">
-                {!isExpired(selectedBooking.holdExpiresAt) && (
-                  <>
-                    <Button 
-                      className="w-full"
-                      onClick={() => handleExtend(selectedBooking)}
-                    >
-                      <Plus className="mr-2 h-4 w-4" />
-                      Extend Hold
-                    </Button>
-                    <Button 
-                      variant="outline" 
-                      className="w-full text-blue-600 border-blue-300 hover:bg-blue-50"
-                      onClick={() => handleSendPaymentLink(selectedBooking)}
-                    >
-                      <Send className="mr-2 h-4 w-4" />
-                      {selectedBooking.paymentLink ? 'Copy Payment Link' : 'Send Payment Link'}
-                    </Button>
-                  </>
-                )}
+                <Button 
+                  className="w-full bg-green-600 hover:bg-green-700"
+                  onClick={() => handleConfirm(selectedBooking)}
+                >
+                  <CheckCircle className="mr-2 h-4 w-4" />
+                  Confirm Booking
+                </Button>
                 <Button 
                   variant="outline" 
                   className="w-full text-red-600 border-red-300 hover:bg-red-50"
-                  onClick={() => handleRelease(selectedBooking)}
+                  onClick={() => handleCancel(selectedBooking)}
                 >
                   <XCircle className="mr-2 h-4 w-4" />
-                  Release Hold
+                  Cancel Booking
                 </Button>
                 <Button variant="secondary" className="w-full">
-                  Open Full Booking
+                  <Eye className="mr-2 h-4 w-4" />
+                  View Full Details
                 </Button>
               </div>
             </div>
@@ -601,69 +754,80 @@ export default function BookingsHolds() {
         </div>
       )}
 
-      {/* Extend Dialog */}
-      <Dialog open={extendDialog.open} onOpenChange={(open) => setExtendDialog({ open, booking: extendDialog.booking })}>
+      {/* Confirm Dialog */}
+      <Dialog open={confirmDialog.open} onOpenChange={(open) => setConfirmDialog({ open, booking: confirmDialog.booking })}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Extend Hold</DialogTitle>
+            <DialogTitle>Confirm Booking Request</DialogTitle>
             <DialogDescription>
-              Extend the hold for {extendDialog.booking?.customer.name}'s booking.
+              Are you sure you want to confirm the booking request for {confirmDialog.booking?.customer.name}?
             </DialogDescription>
           </DialogHeader>
           
-          <div className="grid grid-cols-2 gap-3">
-            <Button variant="outline" onClick={() => confirmExtend('2h')}>+2 hours</Button>
-            <Button variant="outline" onClick={() => confirmExtend('6h')}>+6 hours</Button>
-            <Button variant="outline" onClick={() => confirmExtend('24h')}>+24 hours</Button>
-            <div className="col-span-2">
-              <div className="flex gap-2">
-                <Input
-                  type="number"
-                  placeholder="Custom hours"
-                  value={customExtension}
-                  onChange={(e) => setCustomExtension(e.target.value)}
-                />
-                <Button 
-                  variant="outline" 
-                  onClick={() => confirmExtend('custom')}
-                  disabled={!customExtension}
-                >
-                  Extend
-                </Button>
+          {confirmDialog.booking && (
+            <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+              <h4 className="font-semibold text-green-800 mb-2">Booking Details:</h4>
+              <div className="text-sm space-y-1">
+                <div><strong>Event:</strong> {confirmDialog.booking.purpose}</div>
+                <div><strong>Date:</strong> {format(confirmDialog.booking.start, 'dd MMM yyyy')}</div>
+                <div><strong>Time:</strong> {format(confirmDialog.booking.start, 'HH:mm')} - {format(confirmDialog.booking.end, 'HH:mm')}</div>
+                <div><strong>Resource:</strong> {confirmDialog.booking.resource}</div>
+                <div><strong>Guests:</strong> {confirmDialog.booking.guests}</div>
+                <div><strong>Total Value:</strong> ${confirmDialog.booking.totalValue?.toLocaleString('en-AU') || '0'}</div>
               </div>
             </div>
-          </div>
+          )}
 
           <DialogFooter>
-            <Button variant="outline" onClick={() => setExtendDialog({ open: false, booking: null })}>
+            <Button variant="outline" onClick={() => setConfirmDialog({ open: false, booking: null })}>
               Cancel
+            </Button>
+            <Button 
+              className="bg-green-600 hover:bg-green-700"
+              onClick={confirmBooking}
+            >
+              Confirm Booking
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      {/* Release Dialog */}
-      <Dialog open={releaseDialog.open} onOpenChange={(open) => setReleaseDialog({ open, booking: releaseDialog.booking })}>
+      {/* Cancel Dialog */}
+      <Dialog open={cancelDialog.open} onOpenChange={(open) => setCancelDialog({ open, booking: cancelDialog.booking })}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Release Hold</DialogTitle>
+            <DialogTitle>Cancel Booking Request</DialogTitle>
             <DialogDescription>
-              This will release the hold and free up the slot. The customer will be notified.
+              Are you sure you want to cancel the booking request for {cancelDialog.booking?.customer.name}? This action cannot be undone.
             </DialogDescription>
           </DialogHeader>
           
+          {cancelDialog.booking && (
+            <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+              <h4 className="font-semibold text-red-800 mb-2">Booking Details:</h4>
+              <div className="text-sm space-y-1">
+                <div><strong>Event:</strong> {cancelDialog.booking.purpose}</div>
+                <div><strong>Date:</strong> {format(cancelDialog.booking.start, 'dd MMM yyyy')}</div>
+                <div><strong>Time:</strong> {format(cancelDialog.booking.start, 'HH:mm')} - {format(cancelDialog.booking.end, 'HH:mm')}</div>
+                <div><strong>Resource:</strong> {cancelDialog.booking.resource}</div>
+                <div><strong>Guests:</strong> {cancelDialog.booking.guests}</div>
+                <div><strong>Total Value:</strong> ${cancelDialog.booking.totalValue?.toLocaleString('en-AU') || '0'}</div>
+              </div>
+            </div>
+          )}
+          
           <div className="space-y-4">
             <div>
-              <label className="text-sm font-medium">Reason (optional)</label>
-              <Select value={releaseReason} onValueChange={setReleaseReason}>
+              <label className="text-sm font-medium">Reason for cancellation (optional)</label>
+              <Select value={cancelReason} onValueChange={setCancelReason}>
                 <SelectTrigger>
                   <SelectValue placeholder="Select reason" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="expired">Hold expired</SelectItem>
+                  <SelectItem value="resource_unavailable">Resource unavailable</SelectItem>
+                  <SelectItem value="scheduling_conflict">Scheduling conflict</SelectItem>
                   <SelectItem value="customer_request">Customer request</SelectItem>
                   <SelectItem value="admin_decision">Admin decision</SelectItem>
-                  <SelectItem value="booking_conflict">Booking conflict</SelectItem>
                   <SelectItem value="other">Other</SelectItem>
                 </SelectContent>
               </Select>
@@ -671,18 +835,44 @@ export default function BookingsHolds() {
           </div>
 
           <DialogFooter>
-            <Button variant="outline" onClick={() => setReleaseDialog({ open: false, booking: null })}>
-              Cancel
+            <Button variant="outline" onClick={() => setCancelDialog({ open: false, booking: null })}>
+              Keep Request
             </Button>
             <Button 
-              onClick={confirmRelease}
+              onClick={cancelBooking}
               className="bg-red-600 hover:bg-red-700"
             >
-              Release Hold
+              Cancel Booking
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      
+      {/* Toast Notification */}
+      {toast.isVisible && (
+        <div className="fixed bottom-4 right-4 z-50">
+          <div className={`p-4 rounded-lg shadow-lg max-w-sm ${
+            toast.type === 'success' ? 'bg-green-100 border border-green-200 text-green-800' :
+            toast.type === 'error' ? 'bg-red-100 border border-red-200 text-red-800' :
+            'bg-blue-100 border border-blue-200 text-blue-800'
+          }`}>
+            <div className="flex items-center justify-between">
+              <div>
+                <h4 className="font-semibold">{toast.title}</h4>
+                <p className="text-sm mt-1">{toast.message}</p>
+              </div>
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                onClick={() => setToast(prev => ({ ...prev, isVisible: false }))}
+                className="ml-2 h-6 w-6 p-0"
+              >
+                <XCircle className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </main>
   );
 }

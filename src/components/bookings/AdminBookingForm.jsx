@@ -90,7 +90,7 @@ export default function AdminBookingForm({
 
   // Status options
   const statusOptions = [
-    { value: 'pending', label: 'Pending Review', color: 'bg-orange-100 text-orange-800' },
+    { value: 'pending', label: 'Pending', color: 'bg-orange-100 text-orange-800' },
     { value: 'confirmed', label: 'Confirmed', color: 'bg-green-100 text-green-800' },
     { value: 'tentative', label: 'Tentative', color: 'bg-yellow-100 text-yellow-800' },
     { value: 'cancelled', label: 'Cancelled', color: 'bg-red-100 text-red-800' },
