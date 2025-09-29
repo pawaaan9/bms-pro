@@ -3,6 +3,7 @@ import React, { useState, useEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { createPageUrl } from "@/utils";
 import { useAuth } from "@/contexts/AuthContext";
+import ProfilePicture from "@/components/ui/ProfilePicture";
 import {
   LayoutDashboard,
   Calendar,
@@ -563,30 +564,37 @@ export default function Layout({ children, currentPageName }) {
             
             {/* User Info and Logout Section */}
             {user && (
-              <div className="border-t border-gray-200 p-4 mt-auto">
-                <div className="flex items-center justify-between mb-3">
-                  <div className="flex items-center gap-2">
-                    <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
-                      <Shield className="w-4 h-4 text-blue-600" />
+              <div className="border-t border-gray-200 p-4 mt-auto bg-gradient-to-r from-gray-50 to-blue-50">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center gap-3">
+                    <div className="relative">
+                      <ProfilePicture 
+                        profilePicture={user.profilePicture}
+                        name={user.name}
+                        size="md"
+                        className="ring-2 ring-blue-200 shadow-lg"
+                      />
+                      {/* Online status indicator */}
+                      <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-green-400 rounded-full border-2 border-white"></div>
                     </div>
                     <div>
-                      <p className="text-sm font-medium text-gray-900">
-                        {user.role === 'super_admin' ? 'Super Admin' : 
-                         user.role === 'hall_owner' ? 'Hall Owner' : 
-                         user.role === 'sub_user' ? (user.name || 'Sub-User') : 'User'}
+                      <p className="text-sm font-semibold text-gray-900 flex items-center gap-1">
+                        {user.role === 'super_admin' ? '👑 Super Admin' : 
+                         user.role === 'hall_owner' ? '🏛️ Hall Owner' : 
+                         user.role === 'sub_user' ? `👤 ${user.name || 'Sub-User'}` : '👤 User'}
                       </p>
-                      <p className="text-xs text-gray-500">
-                        {user.role === 'sub_user' ? 'Sub-User' : 'Logged in'}
+                      <p className="text-xs text-gray-600 font-medium">
+                        {user.role === 'sub_user' ? 'Sub-User Account' : 'Active Session'}
                       </p>
                     </div>
                   </div>
                 </div>
                 <button
                   onClick={handleLogout}
-                  className="w-full flex items-center gap-2 px-3 py-2 text-sm text-red-600 hover:bg-red-50 rounded-md transition-colors"
+                  className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 rounded-lg transition-all duration-200 font-medium border border-red-200 hover:border-red-300 hover:shadow-sm"
                 >
                   <LogOut className="w-4 h-4" />
-                  Logout
+                  Sign Out
                 </button>
               </div>
             )}
