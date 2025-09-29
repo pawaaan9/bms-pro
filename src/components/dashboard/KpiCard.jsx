@@ -22,7 +22,7 @@ const KpiCard = ({ title, value, delta, deltaType = 'increase', sparklineData, n
       : 'text-gray-600 bg-gray-100';
 
   return (
-    <Card className="rounded-2xl shadow-sm hover:shadow-lg transition-shadow duration-300">
+    <Card variant="transparent" className="rounded-2xl shadow-sm hover:shadow-lg transition-shadow duration-300">
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
         <CardTitle className="text-sm font-medium text-gray-600">{title}</CardTitle>
       </CardHeader>

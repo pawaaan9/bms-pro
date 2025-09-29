@@ -222,7 +222,7 @@ export default function Dashboard() {
           </div>
         </section>
 
-        <header className="flex flex-wrap items-center justify-between gap-4 relative z-20 bg-white">
+        <header className="flex flex-wrap items-center justify-between gap-4 relative z-20">
           <div>
             <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
             <p className="mt-1 text-gray-500">
@@ -296,7 +296,7 @@ export default function Dashboard() {
           </div>
         </section>
 
-        <header className="flex flex-wrap items-center justify-between gap-4 relative z-20 bg-white">
+        <header className="flex flex-wrap items-center justify-between gap-4 relative z-20">
           <div>
             <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
             <p className="mt-1 text-gray-500">
@@ -435,7 +435,7 @@ export default function Dashboard() {
       </section>
 
       {/* Header */}
-      <header className="flex flex-wrap items-center justify-between gap-4 relative z-20 bg-white">
+      <header className="flex flex-wrap items-center justify-between gap-4 relative z-20">
         <div>
           <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
           <p className="mt-1 text-gray-500">
@@ -456,7 +456,7 @@ export default function Dashboard() {
       </header>
 
       {/* Filters */}
-      <section className="flex flex-wrap items-center gap-3 rounded-lg border bg-white p-3 shadow-sm relative z-20">
+      <section className="flex flex-wrap items-center gap-3 rounded-lg border p-3 shadow-sm relative z-20">
         <Filter className="h-5 w-5 text-gray-500" />
         <div className="flex-grow sm:flex-grow-0">
           <DatePicker />

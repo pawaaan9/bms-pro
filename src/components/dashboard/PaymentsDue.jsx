@@ -13,7 +13,7 @@ const PaymentsDue = ({ payments, userSettings }) => {
   });
 
   return (
-    <Card className="h-full rounded-2xl shadow-sm">
+    <Card variant="transparent" className="h-full rounded-2xl shadow-sm">
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <DollarSign className="h-5 w-5 text-blue-600" />

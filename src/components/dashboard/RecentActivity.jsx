@@ -7,7 +7,7 @@ import { createPageUrl } from '@/utils';
 
 const RecentActivity = ({ activities }) => {
   return (
-    <Card className="rounded-2xl shadow-sm">
+    <Card variant="transparent" className="rounded-2xl shadow-sm">
       <CardHeader className="flex flex-row items-center justify-between">
         <CardTitle className="flex items-center gap-2">
           <History className="h-5 w-5 text-blue-600" />

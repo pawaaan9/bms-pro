@@ -18,7 +18,7 @@ const getAlertIcon = (type) => {
 
 const AlertsTasks = ({ alerts }) => {
   return (
-    <Card className="rounded-2xl shadow-sm">
+    <Card variant="transparent" className="rounded-2xl shadow-sm">
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <AlertTriangle className="h-5 w-5 text-blue-600" />

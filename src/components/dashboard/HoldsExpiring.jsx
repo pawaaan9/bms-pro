@@ -14,7 +14,7 @@ const getExpiryBadgeVariant = (expiresIn) => {
 
 const HoldsExpiring = ({ holds }) => {
   return (
-    <Card className="rounded-2xl shadow-sm">
+    <Card variant="transparent" className="rounded-2xl shadow-sm">
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <Clock3 className="h-5 w-5 text-blue-600" />
