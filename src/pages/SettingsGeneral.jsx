@@ -18,6 +18,8 @@ import {
 } from '../services/settingsService';
 import { changePassword } from '../services/userService';
 import { formatDateTime } from '../utils/dateTimeUtils';
+import ProfilePictureUpload from '../components/ui/ProfilePictureUpload';
+import { uploadProfilePicture, deleteProfilePicture } from '../services/profilePictureService';
 
 export default function SettingsGeneral() {
   const { user, getToken, userSettings: contextSettings, refreshSettings } = useAuth();
@@ -45,6 +47,12 @@ export default function SettingsGeneral() {
     confirm: false
   });
 
+  // Profile picture states
+  const [profilePicture, setProfilePicture] = useState(null);
+  const [uploadingProfilePicture, setUploadingProfilePicture] = useState(false);
+  const [deletingProfilePicture, setDeletingProfilePicture] = useState(false);
+  const [profilePictureMessage, setProfilePictureMessage] = useState({ type: '', text: '' });
+
   const timezones = getAvailableTimezones();
   const dateFormats = getAvailableDateFormats();
   const timeFormats = getAvailableTimeFormats();
@@ -52,7 +60,14 @@ export default function SettingsGeneral() {
 
   useEffect(() => {
     loadSettings();
+    loadProfilePicture();
   }, []);
+
+  const loadProfilePicture = () => {
+    if (user?.profilePicture) {
+      setProfilePicture(user.profilePicture);
+    }
+  };
 
   const loadSettings = async () => {
     try {
@@ -189,6 +204,67 @@ export default function SettingsGeneral() {
       }
     } finally {
       setPasswordSaving(false);
+    }
+  };
+
+  // Profile picture handlers
+  const handleProfilePictureUpload = async (file) => {
+    try {
+      setUploadingProfilePicture(true);
+      setProfilePictureMessage({ type: '', text: '' });
+      
+      const token = getToken();
+      const response = await uploadProfilePicture(file, token);
+      
+      setProfilePicture(response.profilePicture);
+      setProfilePictureMessage({ 
+        type: 'success', 
+        text: '🎉 Profile picture updated successfully!' 
+      });
+      
+      // Clear message after 3 seconds
+      setTimeout(() => {
+        setProfilePictureMessage({ type: '', text: '' });
+      }, 3000);
+      
+    } catch (error) {
+      console.error('Error uploading profile picture:', error);
+      setProfilePictureMessage({ 
+        type: 'error', 
+        text: '😅 Failed to upload profile picture. Please try again.' 
+      });
+    } finally {
+      setUploadingProfilePicture(false);
+    }
+  };
+
+  const handleProfilePictureDelete = async () => {
+    try {
+      setDeletingProfilePicture(true);
+      setProfilePictureMessage({ type: '', text: '' });
+      
+      const token = getToken();
+      await deleteProfilePicture(token);
+      
+      setProfilePicture(null);
+      setProfilePictureMessage({ 
+        type: 'success', 
+        text: '🗑️ Profile picture deleted successfully!' 
+      });
+      
+      // Clear message after 3 seconds
+      setTimeout(() => {
+        setProfilePictureMessage({ type: '', text: '' });
+      }, 3000);
+      
+    } catch (error) {
+      console.error('Error deleting profile picture:', error);
+      setProfilePictureMessage({ 
+        type: 'error', 
+        text: '😅 Failed to delete profile picture. Please try again.' 
+      });
+    } finally {
+      setDeletingProfilePicture(false);
     }
   };
 
@@ -365,6 +441,41 @@ export default function SettingsGeneral() {
             </div>
           </CardContent>
         </Card>
+
+        {/* Profile Picture - Only for hall owners */}
+        {user?.role === 'hall_owner' && (
+          <Card>
+            <CardHeader>
+              <CardTitle>Profile Picture</CardTitle>
+              <CardDescription>
+                Upload and manage your profile picture. This will be displayed throughout the application.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {profilePictureMessage.text && (
+                <Alert variant={profilePictureMessage.type === 'error' ? 'destructive' : 'default'}>
+                  {profilePictureMessage.type === 'success' ? (
+                    <CheckCircle className="h-4 w-4" />
+                  ) : profilePictureMessage.type === 'error' ? (
+                    <AlertCircle className="h-4 w-4" />
+                  ) : null}
+                  <AlertDescription>{profilePictureMessage.text}</AlertDescription>
+                </Alert>
+              )}
+
+              <div className="flex justify-center">
+                <ProfilePictureUpload
+                  profilePicture={profilePicture}
+                  onUpload={handleProfilePictureUpload}
+                  onDelete={handleProfilePictureDelete}
+                  uploading={uploadingProfilePicture}
+                  deleting={deletingProfilePicture}
+                  size="lg"
+                />
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Password Change - Only for hall owners */}
         {user?.role === 'hall_owner' && (

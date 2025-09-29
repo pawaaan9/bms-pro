@@ -8,9 +8,12 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Label } from '@/components/ui/label';
 import { Search, Filter, Users as UsersIcon, Plus, Mail, Lock, Building2, MapPin, User, Shield, Home } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
+import ProfilePictureUpload from '@/components/ui/ProfilePictureUpload';
+import ProfilePicture from '@/components/ui/ProfilePicture';
+import { uploadProfilePicture, deleteProfilePicture } from '@/services/profilePictureService';
 
 export default function Users() {
-  const { isSuperAdmin, loading: authLoading } = useAuth();
+  const { isSuperAdmin, loading: authLoading, getToken } = useAuth();
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -38,6 +41,12 @@ export default function Users() {
   const [editingUser, setEditingUser] = useState(null);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [userToDelete, setUserToDelete] = useState(null);
+  
+  // Profile picture states
+  const [profilePictureFile, setProfilePictureFile] = useState(null);
+  const [profilePicturePreview, setProfilePicturePreview] = useState(null);
+  const [uploadingProfilePicture, setUploadingProfilePicture] = useState(false);
+  const [profilePictureError, setProfilePictureError] = useState('');
 
   // Note: Route protection is now handled by ProtectedRoute component
 
@@ -235,6 +244,33 @@ export default function Users() {
       });
 
       if (response.ok) {
+        const responseData = await response.json();
+        
+        // If profile picture was selected, upload it after user creation
+        if (profilePictureFile && newUser.role === 'hall_owner') {
+          try {
+            const token = getToken();
+            
+            // Create FormData for file upload
+            const formData = new FormData();
+            formData.append('profilePicture', profilePictureFile);
+            
+            const uploadResponse = await fetch(`http://localhost:5000/api/users/upload-profile-picture`, {
+              method: 'POST',
+              headers: {
+                'Authorization': `Bearer ${token}`,
+              },
+              body: formData,
+            });
+            
+            if (!uploadResponse.ok) {
+              console.warn('Profile picture upload failed, but user was created successfully');
+            }
+          } catch (uploadError) {
+            console.warn('Profile picture upload failed, but user was created successfully:', uploadError);
+          }
+        }
+        
         // Show success message
         setSuccessMessage(`${newUser.role === 'hall_owner' ? 'Hall Owner' : 'Super Admin'} account created successfully!`);
         setTimeout(() => setSuccessMessage(''), 3000);
@@ -258,6 +294,12 @@ export default function Users() {
             state: ''
           }
         });
+        
+        // Reset profile picture states
+        setProfilePictureFile(null);
+        setProfilePicturePreview(null);
+        setProfilePictureError('');
+        
         setShowAddUserModal(false);
       } else {
         const errorData = await response.json();
@@ -268,6 +310,29 @@ export default function Users() {
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  // Profile picture handlers
+  const handleProfilePictureUpload = async (file) => {
+    try {
+      setUploadingProfilePicture(true);
+      setProfilePictureError('');
+      
+      // Create preview URL
+      const previewUrl = URL.createObjectURL(file);
+      setProfilePicturePreview(previewUrl);
+      setProfilePictureFile(file);
+    } catch (error) {
+      setProfilePictureError('Failed to process image');
+    } finally {
+      setUploadingProfilePicture(false);
+    }
+  };
+
+  const handleProfilePictureDelete = () => {
+    setProfilePictureFile(null);
+    setProfilePicturePreview(null);
+    setProfilePictureError('');
   };
 
   const uniqueRoles = [...new Set(users.map(u => u.role).filter(Boolean))];
@@ -426,6 +491,7 @@ export default function Users() {
                 <TableHead className="w-12">
                   <input type="checkbox" className="rounded" />
                 </TableHead>
+                <TableHead>Profile</TableHead>
                 <TableHead>Email</TableHead>
                 <TableHead>Role</TableHead>
                 <TableHead>Hall Name</TableHead>
@@ -437,7 +503,7 @@ export default function Users() {
             <TableBody>
               {filtered.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={7} className="text-center py-8">
+                  <TableCell colSpan={8} className="text-center py-8">
                     <div className="flex flex-col items-center gap-2">
                       <UsersIcon className="h-8 w-8 text-muted-foreground" />
                       <p className="text-muted-foreground">No users found.</p>
@@ -449,6 +515,13 @@ export default function Users() {
                   <TableRow key={user.id} className="hover:bg-muted/50">
                     <TableCell>
                       <input type="checkbox" className="rounded" />
+                    </TableCell>
+                    <TableCell>
+                      <ProfilePicture 
+                        profilePicture={user.profilePicture}
+                        name={user.hallName || user.email}
+                        size="sm"
+                      />
                     </TableCell>
                     <TableCell className="font-medium">
                       {user.email || '-'}
@@ -761,6 +834,31 @@ export default function Users() {
                       </div>
                     </div>
                   </div>
+                </div>
+              )}
+
+              {/* Profile Picture Section - Only for hall owners */}
+              {newUser.role === 'hall_owner' && (
+                <div className="space-y-3 pt-2">
+                  <div className="flex items-center gap-1 text-xs font-semibold text-gray-700">
+                    <User className="h-3 w-3" />
+                    Profile Picture (Optional)
+                  </div>
+                  
+                  <div className="flex justify-center">
+                    <ProfilePictureUpload
+                      profilePicture={profilePicturePreview}
+                      onUpload={handleProfilePictureUpload}
+                      onDelete={handleProfilePictureDelete}
+                      uploading={uploadingProfilePicture}
+                      disabled={isSubmitting}
+                      size="md"
+                    />
+                  </div>
+                  
+                  {profilePictureError && (
+                    <div className="text-xs text-red-600 text-center">{profilePictureError}</div>
+                  )}
                 </div>
               )}
 
