@@ -19,7 +19,8 @@ import {
   Menu,
   X,
   LogOut,
-  Receipt } from
+  Receipt,
+  Settings2 } from
 "lucide-react";
 
 const navigationItems = [
@@ -113,6 +114,11 @@ const navigationItems = [
   icon: Shield
 },
 {
+  title: "Management",
+  url: createPageUrl("Management"),
+  icon: Settings2
+},
+{
   title: "Help",
   url: createPageUrl("Help"),
   icon: HelpCircle
@@ -182,6 +188,11 @@ export default function Layout({ children, currentPageName }) {
       return isSuperAdmin() || isHallOwner() || (isSubUser() && canAccessPage('Audit'));
     }
     
+    // Management is accessible by super admins and hall owners
+    if (item.title === 'Management') {
+      return isSuperAdmin() || isHallOwner() || (isSubUser() && canAccessPage('Management'));
+    }
+    
     // Super admins and hall owners have full access to other pages
     if (isSuperAdmin() || isHallOwner()) {
       return true;
@@ -224,6 +235,11 @@ export default function Layout({ children, currentPageName }) {
     // Audit Log is accessible by super admins and hall owners
     if (child.title === 'Audit Log') {
       return isSuperAdmin() || isHallOwner() || (isSubUser() && canAccessPage('Audit'));
+    }
+    
+    // Management is accessible by super admins and hall owners
+    if (child.title === 'Management') {
+      return isSuperAdmin() || isHallOwner() || (isSubUser() && canAccessPage('Management'));
     }
     
     // Super admins and hall owners have full access to other pages

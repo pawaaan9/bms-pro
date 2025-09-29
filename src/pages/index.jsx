@@ -65,6 +65,7 @@ import SettingsPrivacy from "./SettingsPrivacy";
 import Audit from "./Audit";
 
 import Help from "./Help";
+import Management from "./Management";
 
 import { BrowserRouter as Router, Route, Routes, useLocation, Navigate } from 'react-router-dom';
 import ProtectedRoute from '@/components/ProtectedRoute';
@@ -135,6 +136,8 @@ const PAGES = {
     Audit: Audit,
     
     Help: Help,
+    
+    Management: Management,
     
 }
 
@@ -423,6 +426,14 @@ function PagesContent() {
                 <ProtectedRoute>
                     <Layout currentPageName={currentPage}>
                         <Help />
+                    </Layout>
+                </ProtectedRoute>
+            } />
+            
+            <Route path="/Management" element={
+                <ProtectedRoute>
+                    <Layout currentPageName={currentPage}>
+                        <Management />
                     </Layout>
                 </ProtectedRoute>
             } />
