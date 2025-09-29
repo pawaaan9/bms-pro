@@ -10,7 +10,7 @@ import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { GreenCheckbox } from '@/components/ui/green-checkbox';
 import { useAuth } from '@/contexts/AuthContext';
-import { Plus, Edit, Trash2, Shield, Users, UserPlus, Settings, Eye, EyeOff } from 'lucide-react';
+import { Plus, Edit, Trash2, Shield, Users, UserPlus, Settings, Eye, EyeOff, Key } from 'lucide-react';
 
 export default function SettingsRoles() {
   const { user, isHallOwner, getToken } = useAuth();
@@ -42,6 +42,18 @@ export default function SettingsRoles() {
     status: 'active'
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
+  
+  // Password change states
+  const [passwordChangeDialogOpen, setPasswordChangeDialogOpen] = useState(false);
+  const [selectedUserForPassword, setSelectedUserForPassword] = useState(null);
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [showPasswords, setShowPasswords] = useState({
+    new: false,
+    confirm: false
+  });
+  const [passwordMessage, setPasswordMessage] = useState({ type: '', text: '' });
+  const [isChangingPassword, setIsChangingPassword] = useState(false);
 
   // Available permissions
   const availablePermissions = [
@@ -236,6 +248,82 @@ export default function SettingsRoles() {
     setDeleteUserDialogOpen(true);
   };
 
+  const openPasswordChangeDialog = (user) => {
+    setSelectedUserForPassword(user);
+    setNewPassword('');
+    setConfirmPassword('');
+    setPasswordMessage({ type: '', text: '' });
+    setPasswordChangeDialogOpen(true);
+  };
+
+  const handlePasswordChange = async (e) => {
+    e.preventDefault();
+    if (!selectedUserForPassword) return;
+
+    setIsChangingPassword(true);
+    setPasswordMessage({ type: '', text: '' });
+
+    try {
+      // Validate form
+      if (!newPassword || !confirmPassword) {
+        setPasswordMessage({ type: 'error', text: '🔍 Please fill in both password fields.' });
+        return;
+      }
+
+      if (newPassword !== confirmPassword) {
+        setPasswordMessage({ type: 'error', text: '🔄 Oops! Your passwords don\'t match. Try typing them again.' });
+        return;
+      }
+
+      if (newPassword.length < 6) {
+        setPasswordMessage({ type: 'error', text: '💪 The new password needs to be at least 6 characters long for security.' });
+        return;
+      }
+
+      // Call backend API to change sub-user password
+      const token = getToken();
+      const response = await fetch(`http://localhost:5000/api/users/change-sub-user-password`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          subUserId: selectedUserForPassword.id,
+          newPassword: newPassword
+        })
+      });
+
+      if (response.ok) {
+        setPasswordMessage({ type: 'success', text: '🎉 Password changed successfully for ' + selectedUserForPassword.name + '!' });
+        
+        // Clear form and close dialog after success
+        setTimeout(() => {
+          setPasswordChangeDialogOpen(false);
+          setSelectedUserForPassword(null);
+          setNewPassword('');
+          setConfirmPassword('');
+          setPasswordMessage({ type: '', text: '' });
+        }, 2000);
+      } else {
+        const errorData = await response.json();
+        setPasswordMessage({ type: 'error', text: '😅 ' + (errorData.message || 'Failed to change password. Please try again.') });
+      }
+    } catch (error) {
+      console.error('Error changing password:', error);
+      setPasswordMessage({ type: 'error', text: '😅 Something went wrong while changing the password. Please try again.' });
+    } finally {
+      setIsChangingPassword(false);
+    }
+  };
+
+  const togglePasswordVisibility = (field) => {
+    setShowPasswords(prev => ({
+      ...prev,
+      [field]: !prev[field]
+    }));
+  };
+
   // Show access denied for non-hall owners
   if (!isHallOwner()) {
     return (
@@ -413,14 +501,25 @@ export default function SettingsRoles() {
                           size="sm" 
                           className="h-8 w-8 p-0"
                           onClick={() => openEditDialog(subUser)}
+                          title="Edit user"
                         >
                           <Edit className="h-4 w-4" />
                         </Button>
                         <Button 
                           variant="ghost" 
                           size="sm" 
+                          className="h-8 w-8 p-0 text-blue-600 hover:text-blue-700"
+                          onClick={() => openPasswordChangeDialog(subUser)}
+                          title="Change password"
+                        >
+                          <Key className="h-4 w-4" />
+                        </Button>
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
                           className="h-8 w-8 p-0 text-red-600 hover:text-red-700"
                           onClick={() => openDeleteDialog(subUser)}
+                          title="Delete user"
                         >
                           <Trash2 className="h-4 w-4" />
                         </Button>
@@ -654,6 +753,110 @@ export default function SettingsRoles() {
               {isSubmitting ? 'Deleting...' : 'Delete Sub-User'}
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Change Password Dialog */}
+      <Dialog open={passwordChangeDialogOpen} onOpenChange={setPasswordChangeDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Key className="h-5 w-5" />
+              Change Password
+            </DialogTitle>
+          </DialogHeader>
+          <form onSubmit={handlePasswordChange} className="space-y-4">
+            {selectedUserForPassword && (
+              <div className="bg-gray-50 p-3 rounded-md">
+                <p className="font-medium">{selectedUserForPassword.name || 'No name'}</p>
+                <p className="text-sm text-gray-500">{selectedUserForPassword.email}</p>
+              </div>
+            )}
+
+            {passwordMessage.text && (
+              <div className={`p-3 rounded-md ${
+                passwordMessage.type === 'success' 
+                  ? 'bg-green-50 border border-green-200 text-green-800' 
+                  : 'bg-red-50 border border-red-200 text-red-800'
+              }`}>
+                {passwordMessage.text}
+              </div>
+            )}
+
+            <div className="space-y-4">
+              <div>
+                <Label htmlFor="newPassword">New Password *</Label>
+                <div className="relative">
+                  <Input
+                    id="newPassword"
+                    type={showPasswords.new ? "text" : "password"}
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    placeholder="Enter new password"
+                    required
+                  />
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                    onClick={() => togglePasswordVisibility('new')}
+                  >
+                    {showPasswords.new ? (
+                      <EyeOff className="h-4 w-4" />
+                    ) : (
+                      <Eye className="h-4 w-4" />
+                    )}
+                  </Button>
+                </div>
+              </div>
+
+              <div>
+                <Label htmlFor="confirmPassword">Confirm New Password *</Label>
+                <div className="relative">
+                  <Input
+                    id="confirmPassword"
+                    type={showPasswords.confirm ? "text" : "password"}
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    placeholder="Confirm new password"
+                    required
+                  />
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                    onClick={() => togglePasswordVisibility('confirm')}
+                  >
+                    {showPasswords.confirm ? (
+                      <EyeOff className="h-4 w-4" />
+                    ) : (
+                      <Eye className="h-4 w-4" />
+                    )}
+                  </Button>
+                </div>
+              </div>
+            </div>
+
+            <DialogFooter>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setPasswordChangeDialogOpen(false)}
+                disabled={isChangingPassword}
+              >
+                Cancel
+              </Button>
+              <Button 
+                type="submit" 
+                disabled={isChangingPassword}
+                className="bg-blue-600 hover:bg-blue-700"
+              >
+                {isChangingPassword ? 'Changing...' : 'Change Password'}
+              </Button>
+            </DialogFooter>
+          </form>
         </DialogContent>
       </Dialog>
     </div>
