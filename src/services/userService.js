@@ -56,3 +56,61 @@ export const getUserDisplayName = (user) => {
   
   return 'User';
 };
+
+// Change user password using Firebase Client SDK
+export const changePassword = async (currentPassword, newPassword) => {
+  try {
+    // Import Firebase Auth functions
+    const { signInWithEmailAndPassword, updatePassword } = await import('firebase/auth');
+    const { auth } = await import('../../firebase');
+    
+    // Get current user
+    const user = auth.currentUser;
+    if (!user) {
+      throw new Error('No authenticated user found');
+    }
+    
+    // Get user's email
+    const email = user.email;
+    if (!email) {
+      throw new Error('User email not found');
+    }
+    
+    // Verify current password by attempting to sign in
+    try {
+      await signInWithEmailAndPassword(auth, email, currentPassword);
+    } catch (error) {
+      if (error.code === 'auth/wrong-password') {
+        throw new Error('Current password is incorrect');
+      } else if (error.code === 'auth/user-not-found') {
+        throw new Error('User not found');
+      } else if (error.code === 'auth/invalid-email') {
+        throw new Error('Invalid email');
+      } else {
+        throw new Error('Failed to verify current password');
+      }
+    }
+    
+    // Update password
+    await updatePassword(user, newPassword);
+    
+    // Log the password change to backend for audit purposes
+    const token = await user.getIdToken();
+    const response = await fetch('http://localhost:5000/api/users/log-password-change', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      }
+    });
+    
+    if (!response.ok) {
+      console.warn('Failed to log password change to backend:', response.statusText);
+    }
+    
+    return { message: 'Password changed successfully' };
+  } catch (error) {
+    console.error('Error changing password:', error);
+    throw error;
+  }
+};

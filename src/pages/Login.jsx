@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { Eye, EyeOff } from 'lucide-react';
+import { signInWithEmailAndPassword } from 'firebase/auth';
+import { auth } from '../../firebase';
 
 
 export default function Login() {
@@ -18,19 +20,45 @@ export default function Login() {
     setError('');
     setLoading(true);
     try {
-      // Login API
+      // First, authenticate with Firebase Client SDK
+      const userCredential = await signInWithEmailAndPassword(auth, email, password);
+      const idToken = await userCredential.user.getIdToken();
+      
+      // Then, send the ID token to our backend to get custom JWT
       const res = await fetch('http://localhost:5000/api/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ idToken }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || 'Login failed');
+      
       // Save token/role using auth context
       await login(data.token, data.role);
       navigate('/Welcome', { replace: true });
     } catch (err) {
-      setError(err.message);
+      console.error('Login error:', err);
+      
+      // Handle Firebase Auth errors with creative messages
+      if (err.code === 'auth/user-not-found') {
+        setError('🔍 Oops! We couldn\'t find an account with that email. Double-check your email or contact support.');
+      } else if (err.code === 'auth/wrong-password') {
+        setError('🔐 That password doesn\'t look right. Try again or reset your password.');
+      } else if (err.code === 'auth/invalid-email') {
+        setError('📧 That email address looks a bit off. Please check the format and try again.');
+      } else if (err.code === 'auth/user-disabled') {
+        setError('🚫 This account has been temporarily disabled. Please contact your administrator.');
+      } else if (err.code === 'auth/too-many-requests') {
+        setError('⏰ Whoa there! Too many attempts. Take a breather and try again in a few minutes.');
+      } else if (err.code === 'auth/invalid-credential') {
+        setError('🤔 Hmm, those credentials don\'t match our records. Check your email and password.');
+      } else if (err.code === 'auth/network-request-failed') {
+        setError('🌐 Connection issues! Check your internet and try again.');
+      } else if (err.code === 'auth/weak-password') {
+        setError('💪 Password too weak! Make it stronger with more characters.');
+      } else {
+        setError('😅 Something went wrong! Please try again or contact support if the issue persists.');
+      }
     } finally {
       setLoading(false);
     }

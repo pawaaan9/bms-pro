@@ -1,4 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { onAuthStateChanged } from 'firebase/auth';
+import { auth } from '../../firebase';
 
 const AuthContext = createContext();
 
@@ -90,29 +92,55 @@ export const AuthProvider = ({ children }) => {
   };
 
   useEffect(() => {
-    // Check if user is logged in on app start
-    const storedToken = localStorage.getItem('token');
-    const role = localStorage.getItem('role');
-    
-    if (storedToken && role) {
-      setToken(storedToken);
-      // Fetch user profile data and settings
-      Promise.all([
-        fetchUserProfile(storedToken),
-        fetchUserSettings(storedToken)
-      ]).then(([userData, settings]) => {
-        if (userData) {
-          const finalUser = { role, ...userData };
-          console.log('Initial user loading - Setting user object:', finalUser);
-          setUser(finalUser);
+    // Listen for Firebase auth state changes
+    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+      if (firebaseUser) {
+        // User is signed in with Firebase
+        const storedToken = localStorage.getItem('token');
+        const role = localStorage.getItem('role');
+        
+        if (storedToken && role) {
+          setToken(storedToken);
+          // Fetch user profile data and settings
+          try {
+            const [userData, settings] = await Promise.all([
+              fetchUserProfile(storedToken),
+              fetchUserSettings(storedToken)
+            ]);
+            
+            if (userData) {
+              const finalUser = { role, ...userData };
+              console.log('Initial user loading - Setting user object:', finalUser);
+              setUser(finalUser);
+            } else {
+              setUser({ role });
+            }
+          } catch (error) {
+            console.error('Error fetching user data:', error);
+            setUser({ role });
+          }
         } else {
-          setUser({ role });
+          setUser({ role: 'guest' });
         }
-        setLoading(false);
-      });
-    } else {
+      } else {
+        // User is signed out
+        localStorage.removeItem('token');
+        localStorage.removeItem('role');
+        setUser(null);
+        setToken(null);
+        setParentUserData(null);
+        setUserSettings({
+          timezone: 'Australia/Sydney',
+          dateFormat: 'DD/MM/YYYY',
+          timeFormat: '12h',
+          currency: 'AUD'
+        });
+      }
       setLoading(false);
-    }
+    });
+
+    // Cleanup subscription on unmount
+    return () => unsubscribe();
   }, []);
 
   const login = async (authToken, role) => {
@@ -142,7 +170,14 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  const logout = () => {
+  const logout = async () => {
+    try {
+      // Sign out from Firebase
+      await auth.signOut();
+    } catch (error) {
+      console.error('Error signing out from Firebase:', error);
+    }
+    
     localStorage.removeItem('token');
     localStorage.removeItem('role');
     setUser(null);

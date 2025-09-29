@@ -3,10 +3,11 @@ import { useAuth } from '../contexts/AuthContext';
 import { Button } from '../components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { Label } from '../components/ui/label';
+import { Input } from '../components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 import { Separator } from '../components/ui/separator';
 import { Alert, AlertDescription } from '../components/ui/alert';
-import { Loader2, CheckCircle, AlertCircle } from 'lucide-react';
+import { Loader2, CheckCircle, AlertCircle, Eye, EyeOff } from 'lucide-react';
 import { 
   getUserSettings, 
   updateUserSettings, 
@@ -15,6 +16,7 @@ import {
   getAvailableTimeFormats, 
   getAvailableCurrencies 
 } from '../services/settingsService';
+import { changePassword } from '../services/userService';
 import { formatDateTime } from '../utils/dateTimeUtils';
 
 export default function SettingsGeneral() {
@@ -28,6 +30,20 @@ export default function SettingsGeneral() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState({ type: '', text: '' });
+  
+  // Password change state
+  const [passwordForm, setPasswordForm] = useState({
+    currentPassword: '',
+    newPassword: '',
+    confirmPassword: ''
+  });
+  const [passwordSaving, setPasswordSaving] = useState(false);
+  const [passwordMessage, setPasswordMessage] = useState({ type: '', text: '' });
+  const [showPasswords, setShowPasswords] = useState({
+    current: false,
+    new: false,
+    confirm: false
+  });
 
   const timezones = getAvailableTimezones();
   const dateFormats = getAvailableDateFormats();
@@ -50,7 +66,7 @@ export default function SettingsGeneral() {
       if (contextSettings) {
         setSettings(contextSettings);
       }
-      setMessage({ type: 'error', text: 'Failed to load settings. Using defaults.' });
+      setMessage({ type: 'error', text: '⚠️ Couldn\'t load your settings, but we\'re using defaults for now.' });
     } finally {
       setLoading(false);
     }
@@ -67,7 +83,7 @@ export default function SettingsGeneral() {
       // Refresh settings in context
       await refreshSettings();
       
-      setMessage({ type: 'success', text: 'Settings saved successfully!' });
+      setMessage({ type: 'success', text: '✨ Great! Your settings have been saved successfully!' });
       
       // Clear message after 3 seconds
       setTimeout(() => {
@@ -75,7 +91,7 @@ export default function SettingsGeneral() {
       }, 3000);
     } catch (error) {
       console.error('Error saving settings:', error);
-      setMessage({ type: 'error', text: error.message || 'Failed to save settings' });
+      setMessage({ type: 'error', text: '😅 Oops! We couldn\'t save your settings. Please try again.' });
     } finally {
       setSaving(false);
     }
@@ -91,6 +107,89 @@ export default function SettingsGeneral() {
   const getPreviewText = () => {
     const now = new Date();
     return formatDateTime(now, settings.dateFormat, settings.timeFormat, settings.timezone);
+  };
+
+  const handlePasswordChange = (field, value) => {
+    setPasswordForm(prev => ({
+      ...prev,
+      [field]: value
+    }));
+    // Clear password message when user starts typing
+    if (passwordMessage.text) {
+      setPasswordMessage({ type: '', text: '' });
+    }
+  };
+
+  const togglePasswordVisibility = (field) => {
+    setShowPasswords(prev => ({
+      ...prev,
+      [field]: !prev[field]
+    }));
+  };
+
+  const handlePasswordSubmit = async () => {
+    try {
+      setPasswordSaving(true);
+      setPasswordMessage({ type: '', text: '' });
+
+      // Validate form with creative messages
+      if (!passwordForm.currentPassword || !passwordForm.newPassword || !passwordForm.confirmPassword) {
+        setPasswordMessage({ type: 'error', text: '🔍 Please fill in all password fields to continue.' });
+        return;
+      }
+
+      if (passwordForm.newPassword !== passwordForm.confirmPassword) {
+        setPasswordMessage({ type: 'error', text: '🔄 Oops! Your new passwords don\'t match. Try typing them again.' });
+        return;
+      }
+
+      if (passwordForm.newPassword.length < 6) {
+        setPasswordMessage({ type: 'error', text: '💪 Your new password needs to be at least 6 characters long for security.' });
+        return;
+      }
+
+      if (passwordForm.currentPassword === passwordForm.newPassword) {
+        setPasswordMessage({ type: 'error', text: '🔄 Your new password should be different from your current one.' });
+        return;
+      }
+
+      // Call password change function
+      await changePassword(passwordForm.currentPassword, passwordForm.newPassword);
+
+      setPasswordMessage({ type: 'success', text: '🎉 Awesome! Your password has been updated successfully!' });
+      
+      // Clear form
+      setPasswordForm({
+        currentPassword: '',
+        newPassword: '',
+        confirmPassword: ''
+      });
+
+      // Clear message after 3 seconds
+      setTimeout(() => {
+        setPasswordMessage({ type: '', text: '' });
+      }, 3000);
+
+    } catch (error) {
+      console.error('Error changing password:', error);
+      
+      // Handle specific password change errors with creative messages
+      if (error.message.includes('Current password is incorrect')) {
+        setPasswordMessage({ type: 'error', text: '🔐 The current password you entered is incorrect. Please try again.' });
+      } else if (error.message.includes('No authenticated user found')) {
+        setPasswordMessage({ type: 'error', text: '👤 You need to be logged in to change your password. Please refresh and try again.' });
+      } else if (error.message.includes('User not found')) {
+        setPasswordMessage({ type: 'error', text: '🔍 We couldn\'t find your account. Please contact support.' });
+      } else if (error.message.includes('Invalid email')) {
+        setPasswordMessage({ type: 'error', text: '📧 There\'s an issue with your email. Please contact support.' });
+      } else if (error.message.includes('Failed to verify current password')) {
+        setPasswordMessage({ type: 'error', text: '🤔 We couldn\'t verify your current password. Please check and try again.' });
+      } else {
+        setPasswordMessage({ type: 'error', text: '😅 Oops! Something went wrong while changing your password. Please try again.' });
+      }
+    } finally {
+      setPasswordSaving(false);
+    }
   };
 
   if (loading) {
@@ -266,6 +365,121 @@ export default function SettingsGeneral() {
             </div>
           </CardContent>
         </Card>
+
+        {/* Password Change - Only for hall owners */}
+        {user?.role === 'hall_owner' && (
+          <Card>
+            <CardHeader>
+              <CardTitle>Change Password</CardTitle>
+              <CardDescription>
+                Update your account password. Choose a strong password to keep your account secure.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {passwordMessage.text && (
+                <Alert variant={passwordMessage.type === 'error' ? 'destructive' : 'default'}>
+                  {passwordMessage.type === 'success' ? (
+                    <CheckCircle className="h-4 w-4" />
+                  ) : passwordMessage.type === 'error' ? (
+                    <AlertCircle className="h-4 w-4" />
+                  ) : null}
+                  <AlertDescription>{passwordMessage.text}</AlertDescription>
+                </Alert>
+              )}
+
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="currentPassword">Current Password</Label>
+                  <div className="relative">
+                    <Input
+                      id="currentPassword"
+                      type={showPasswords.current ? "text" : "password"}
+                      value={passwordForm.currentPassword}
+                      onChange={(e) => handlePasswordChange('currentPassword', e.target.value)}
+                      placeholder="Enter your current password"
+                    />
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                      onClick={() => togglePasswordVisibility('current')}
+                    >
+                      {showPasswords.current ? (
+                        <EyeOff className="h-4 w-4" />
+                      ) : (
+                        <Eye className="h-4 w-4" />
+                      )}
+                    </Button>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="newPassword">New Password</Label>
+                  <div className="relative">
+                    <Input
+                      id="newPassword"
+                      type={showPasswords.new ? "text" : "password"}
+                      value={passwordForm.newPassword}
+                      onChange={(e) => handlePasswordChange('newPassword', e.target.value)}
+                      placeholder="Enter your new password"
+                    />
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                      onClick={() => togglePasswordVisibility('new')}
+                    >
+                      {showPasswords.new ? (
+                        <EyeOff className="h-4 w-4" />
+                      ) : (
+                        <Eye className="h-4 w-4" />
+                      )}
+                    </Button>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="confirmPassword">Confirm New Password</Label>
+                  <div className="relative">
+                    <Input
+                      id="confirmPassword"
+                      type={showPasswords.confirm ? "text" : "password"}
+                      value={passwordForm.confirmPassword}
+                      onChange={(e) => handlePasswordChange('confirmPassword', e.target.value)}
+                      placeholder="Confirm your new password"
+                    />
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                      onClick={() => togglePasswordVisibility('confirm')}
+                    >
+                      {showPasswords.confirm ? (
+                        <EyeOff className="h-4 w-4" />
+                      ) : (
+                        <Eye className="h-4 w-4" />
+                      )}
+                    </Button>
+                  </div>
+                </div>
+
+                <div className="flex justify-end">
+                  <Button 
+                    onClick={handlePasswordSubmit} 
+                    disabled={passwordSaving}
+                    variant="outline"
+                  >
+                    {passwordSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                    {passwordSaving ? 'Changing Password...' : 'Change Password'}
+                  </Button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Save Button */}
         <div className="flex justify-end">
