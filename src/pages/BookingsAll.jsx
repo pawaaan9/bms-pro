@@ -317,6 +317,10 @@ export default function BookingsAll() {
     if (filters.riskLevel.length > 0) {
       filtered = filtered.filter(b => filters.riskLevel.includes(b.riskLevel));
     }
+    
+    if (filters.bookingSources && filters.bookingSources.length > 0) {
+      filtered = filtered.filter(b => filters.bookingSources.includes(b.bookingSource));
+    }
 
     // Date range with intelligent defaults
     if (filters.dateFrom) {

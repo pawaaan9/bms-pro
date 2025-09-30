@@ -147,15 +147,31 @@ const BookingDetailPaneAdvanced = ({ booking, onClose }) => {
                     <span>${booking.totalValue.toLocaleString('en-AU')}</span>
                 </div>
                 
-                {/* Show source information if from quotation */}
-                {booking.quotationId && (
-                  <div className="mt-2 pt-2 border-t border-gray-200">
-                    <div className="flex justify-between text-xs text-gray-500">
-                      <span>Source:</span>
-                      <span>From Quotation {booking.quotationId}</span>
+                {/* Show booking source information */}
+                <div className="mt-2 pt-2 border-t border-gray-200">
+                  <div className="flex justify-between text-xs text-gray-500">
+                    <span>Booking Source:</span>
+                    <div className="flex items-center gap-2">
+                      {booking.bookingSource === 'quotation' && booking.quotationId ? (
+                        <Badge variant="secondary" className="text-xs bg-blue-100 text-blue-800">
+                          From Quotation {booking.quotationId}
+                        </Badge>
+                      ) : booking.bookingSource === 'admin' ? (
+                        <Badge variant="secondary" className="text-xs bg-purple-100 text-purple-800">
+                          Admin Panel
+                        </Badge>
+                      ) : booking.bookingSource === 'website' ? (
+                        <Badge variant="secondary" className="text-xs bg-green-100 text-green-800">
+                          Website
+                        </Badge>
+                      ) : (
+                        <Badge variant="secondary" className="text-xs bg-gray-100 text-gray-800">
+                          {booking.bookingSource || 'Direct'}
+                        </Badge>
+                      )}
                     </div>
                   </div>
-                )}
+                </div>
             </div>
         </div>
 

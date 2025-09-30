@@ -23,6 +23,12 @@ export const transformInvoiceFromBackend = (backendInvoice) => {
     sentAt: backendInvoice.sentAt ? new Date(backendInvoice.sentAt) : null,
     createdAt: backendInvoice.createdAt ? new Date(backendInvoice.createdAt) : new Date(),
     updatedAt: backendInvoice.updatedAt ? new Date(backendInvoice.updatedAt) : new Date(),
+    // Booking source information
+    bookingSource: backendInvoice.bookingSource,
+    quotationId: backendInvoice.quotationId,
+    depositPaid: backendInvoice.depositPaid,
+    finalTotal: backendInvoice.finalTotal,
+    depositInfo: backendInvoice.depositInfo,
     // Additional fields for compatibility
     priority: backendInvoice.status === 'OVERDUE' ? 'high' : 'normal'
   };

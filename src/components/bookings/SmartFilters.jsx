@@ -48,6 +48,12 @@ const PRIORITIES = [
   { value: 'normal', label: 'Normal Priority', color: 'bg-gray-500' },
 ];
 
+const BOOKING_SOURCES = [
+  { value: 'website', label: 'Website', color: 'bg-green-500' },
+  { value: 'admin', label: 'Admin Panel', color: 'bg-purple-500' },
+  { value: 'quotation', label: 'Quotation', color: 'bg-blue-500' },
+];
+
 const CUSTOMER_TIERS = [
   { value: 'premium', label: 'Premium', color: 'bg-purple-500' },
   { value: 'business', label: 'Business', color: 'bg-blue-500' },
@@ -249,6 +255,22 @@ export default function SmartFilters({ filters, onFiltersChange, onClearFilters,
                     isActive={filters.priority.includes(priority.value)}
                     onClick={() => toggleArrayFilter('priority', priority.value)}
                     color={priority.color}
+                  />
+                ))}
+              </div>
+            </div>
+
+            {/* Booking Source */}
+            <div>
+              <Label className="text-sm font-semibold">Booking Source</Label>
+              <div className="flex flex-wrap gap-2 mt-2">
+                {BOOKING_SOURCES.map(source => (
+                  <FilterChip
+                    key={source.value}
+                    label={source.label}
+                    isActive={filters.bookingSources?.includes(source.value) || false}
+                    onClick={() => toggleArrayFilter('bookingSources', source.value)}
+                    color={source.color}
                   />
                 ))}
               </div>

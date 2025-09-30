@@ -24,6 +24,7 @@ export const transformBookingToCalendarEvent = (backendBooking) => {
     priceDetails: backendBooking.priceDetails,
     additionalDescription: backendBooking.additionalDescription,
     bookingSource: backendBooking.bookingSource,
+    quotationId: backendBooking.quotationId,
     createdAt: backendBooking.createdAt ? new Date(backendBooking.createdAt) : new Date(),
     updatedAt: backendBooking.updatedAt ? new Date(backendBooking.updatedAt) : new Date(),
     // Calendar-specific properties

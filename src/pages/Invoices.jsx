@@ -439,6 +439,17 @@ const InvoicesTable = ({
                           )}
                         </div>
                       )}
+                      {invoice.depositPaid > 0 && (
+                        <div className="text-xs text-blue-600 mt-1">
+                          <div className="font-medium flex items-center gap-1">
+                            <span>💰</span>
+                            <span>Deposit: ${invoice.depositPaid.toLocaleString('en-AU', { minimumFractionDigits: 2 })}</span>
+                          </div>
+                          <div className="text-green-600 font-medium">
+                            Due: ${invoice.finalTotal.toLocaleString('en-AU', { minimumFractionDigits: 2 })} AUD
+                          </div>
+                        </div>
+                      )}
                     </div>
                   </TableCell>
                   <TableCell>
@@ -533,6 +544,32 @@ const InvoiceDetailPane = ({ invoice, onClose, token }) => {
             </p>
           </div>
 
+          {/* Booking Source Information */}
+          <div className="bg-white/50 rounded-lg p-3">
+            <p className="text-sm">
+              <span className="font-semibold text-gray-800">Booking Source:</span>{' '}
+              <div className="inline-flex items-center gap-2 mt-1">
+                {invoice.bookingSource === 'quotation' && invoice.quotationId ? (
+                  <Badge variant="secondary" className="text-xs bg-blue-100 text-blue-800">
+                    From Quotation {invoice.quotationId}
+                  </Badge>
+                ) : invoice.bookingSource === 'admin' ? (
+                  <Badge variant="secondary" className="text-xs bg-purple-100 text-purple-800">
+                    Admin Panel
+                  </Badge>
+                ) : invoice.bookingSource === 'website' ? (
+                  <Badge variant="secondary" className="text-xs bg-green-100 text-green-800">
+                    Website
+                  </Badge>
+                ) : (
+                  <Badge variant="secondary" className="text-xs bg-gray-100 text-gray-800">
+                    {invoice.bookingSource || 'Direct'}
+                  </Badge>
+                )}
+              </div>
+            </p>
+          </div>
+
           {/* Buyer Details (required for ≥$1,000) */}
           {isLargeInvoice && (
             <motion.div 
@@ -600,33 +637,65 @@ const InvoiceDetailPane = ({ invoice, onClose, token }) => {
             <h3 className="font-bold text-gray-800">Payment Summary</h3>
           </div>
           
-          {/* Show deposit information if this is a final invoice with deposit */}
+          {/* Enhanced deposit information section */}
           {invoice.depositPaid > 0 && (
-            <div className="bg-blue-50 rounded-lg p-4 border border-blue-200">
-              <div className="flex items-center gap-2 mb-3">
-                <CheckCircle className="h-4 w-4 text-blue-600" />
-                <h4 className="font-semibold text-blue-800">Deposit Applied</h4>
+            <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg p-5 border-2 border-blue-200 shadow-sm">
+              <div className="flex items-center gap-2 mb-4">
+                <div className="p-2 bg-blue-100 rounded-lg">
+                  <CheckCircle className="h-5 w-5 text-blue-600" />
+                </div>
+                <div>
+                  <h4 className="font-bold text-blue-900 text-lg">Deposit Applied</h4>
+                  <p className="text-sm text-blue-700">Your deposit has been deducted from the total amount</p>
+                </div>
               </div>
-              <div className="space-y-2 text-sm">
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Subtotal:</span>
-                  <span className="font-mono">${invoice.subtotal.toLocaleString('en-AU', { minimumFractionDigits: 2 })}</span>
+              
+              {invoice.bookingSource === 'quotation' && invoice.quotationId && (
+                <div className="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                  <div className="flex items-center gap-2 mb-2">
+                    <div className="w-2 h-2 bg-yellow-500 rounded-full"></div>
+                    <span className="font-semibold text-yellow-800 text-sm">Quotation-based Invoice</span>
+                  </div>
+                  <p className="text-xs text-yellow-800">
+                    This invoice is based on quotation <strong>{invoice.quotationId}</strong>. 
+                    Your deposit has been deducted from the total amount.
+                  </p>
                 </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-600">GST (10%):</span>
-                  <span className="font-mono">${invoice.gst.toLocaleString('en-AU', { minimumFractionDigits: 2 })}</span>
+              )}
+              
+              <div className="bg-white rounded-lg p-4 border border-blue-100">
+                <div className="space-y-3 text-sm">
+                  <div className="flex justify-between items-center">
+                    <span className="text-gray-600 font-medium">Subtotal:</span>
+                    <span className="font-mono font-semibold">${invoice.subtotal.toLocaleString('en-AU', { minimumFractionDigits: 2 })}</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-gray-600 font-medium">GST (10%):</span>
+                    <span className="font-mono font-semibold">${invoice.gst.toLocaleString('en-AU', { minimumFractionDigits: 2 })}</span>
+                  </div>
+                  <div className="flex justify-between items-center border-t pt-2">
+                    <span className="text-gray-700 font-semibold">Total Amount:</span>
+                    <span className="font-mono font-bold text-gray-900">${invoice.total.toLocaleString('en-AU', { minimumFractionDigits: 2 })}</span>
+                  </div>
+                  <div className="flex justify-between items-center border-t pt-2 bg-blue-50 rounded px-2 py-1">
+                    <span className="text-blue-800 font-bold flex items-center gap-1">
+                      <span className="text-blue-600">💰</span>
+                      Deposit Paid:
+                    </span>
+                    <span className="font-mono text-blue-800 font-bold">-${invoice.depositPaid.toLocaleString('en-AU', { minimumFractionDigits: 2 })}</span>
+                  </div>
+                  <div className="flex justify-between items-center border-t-2 border-blue-200 pt-3 bg-green-50 rounded px-2 py-2">
+                    <span className="text-green-800 font-bold text-base flex items-center gap-1">
+                      <span className="text-green-600">💳</span>
+                      Amount You Need to Pay:
+                    </span>
+                    <span className="font-mono text-green-800 font-bold text-lg">${invoice.finalTotal.toLocaleString('en-AU', { minimumFractionDigits: 2 })} AUD</span>
+                  </div>
                 </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Total Amount:</span>
-                  <span className="font-mono">${invoice.total.toLocaleString('en-AU', { minimumFractionDigits: 2 })}</span>
-                </div>
-                <div className="flex justify-between border-t pt-2">
-                  <span className="text-blue-700 font-medium">Deposit Paid:</span>
-                  <span className="font-mono text-blue-700 font-bold">-${invoice.depositPaid.toLocaleString('en-AU', { minimumFractionDigits: 2 })}</span>
-                </div>
-                <div className="flex justify-between border-t pt-2 font-bold">
-                  <span className="text-gray-800">Final Amount Due:</span>
-                  <span className="font-mono text-gray-900">${invoice.finalTotal.toLocaleString('en-AU', { minimumFractionDigits: 2 })}</span>
+                
+                {/* Calculation explanation */}
+                <div className="mt-3 p-2 bg-gray-50 rounded text-xs text-gray-600 text-center">
+                  <strong>Calculation:</strong> ${invoice.total.toLocaleString('en-AU', { minimumFractionDigits: 2 })} - ${invoice.depositPaid.toLocaleString('en-AU', { minimumFractionDigits: 2 })} = ${invoice.finalTotal.toLocaleString('en-AU', { minimumFractionDigits: 2 })} AUD
                 </div>
               </div>
             </div>
@@ -1511,6 +1580,28 @@ export default function Invoices() {
                     <div>
                       <span className="text-gray-600">Resource:</span>
                       <span className="font-medium text-gray-900 ml-1 truncate block">{selectedBooking.resource}</span>
+                    </div>
+                    <div>
+                      <span className="text-gray-600">Source:</span>
+                      <div className="inline-flex items-center gap-1 ml-1">
+                        {selectedBooking.bookingSource === 'quotation' && selectedBooking.quotationId ? (
+                          <Badge variant="secondary" className="text-xs bg-blue-100 text-blue-800">
+                            From Quotation {selectedBooking.quotationId}
+                          </Badge>
+                        ) : selectedBooking.bookingSource === 'admin' ? (
+                          <Badge variant="secondary" className="text-xs bg-purple-100 text-purple-800">
+                            Admin Panel
+                          </Badge>
+                        ) : selectedBooking.bookingSource === 'website' ? (
+                          <Badge variant="secondary" className="text-xs bg-green-100 text-green-800">
+                            Website
+                          </Badge>
+                        ) : (
+                          <Badge variant="secondary" className="text-xs bg-gray-100 text-gray-800">
+                            {selectedBooking.bookingSource || 'Direct'}
+                          </Badge>
+                        )}
+                      </div>
                     </div>
                     {selectedBooking.calculatedPrice && (
                       <div className="col-span-2">

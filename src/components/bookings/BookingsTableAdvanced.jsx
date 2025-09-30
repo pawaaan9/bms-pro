@@ -124,6 +124,7 @@ const BookingsTableAdvanced = React.forwardRef(({
   const headers = [
     { key: 'customer', label: 'Customer' },
     { key: 'resource', label: 'Resource' },
+    { key: 'source', label: 'Source' },
     { key: 'start', label: 'Event Start' },
     { key: 'status', label: 'Status' },
     { key: 'value', label: 'Value' },
@@ -193,6 +194,25 @@ const BookingsTableAdvanced = React.forwardRef(({
                   <div className="text-sm text-gray-500">{booking.purpose}</div>
                 </TableCell>
                 <TableCell>{booking.resource}</TableCell>
+                <TableCell>
+                  {booking.bookingSource === 'quotation' && booking.quotationId ? (
+                    <Badge variant="secondary" className="text-xs bg-blue-100 text-blue-800">
+                      Quotation
+                    </Badge>
+                  ) : booking.bookingSource === 'admin' ? (
+                    <Badge variant="secondary" className="text-xs bg-purple-100 text-purple-800">
+                      Admin
+                    </Badge>
+                  ) : booking.bookingSource === 'website' ? (
+                    <Badge variant="secondary" className="text-xs bg-green-100 text-green-800">
+                      Website
+                    </Badge>
+                  ) : (
+                    <Badge variant="secondary" className="text-xs bg-gray-100 text-gray-800">
+                      {booking.bookingSource || 'Direct'}
+                    </Badge>
+                  )}
+                </TableCell>
                 <TableCell>
                     <div>{format(booking.start, 'dd MMM yyyy')}</div>
                     <div className="text-xs text-gray-500">{format(booking.start, 'HH:mm')} - {format(booking.end, 'HH:mm')}</div>
