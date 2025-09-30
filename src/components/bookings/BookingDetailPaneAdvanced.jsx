@@ -118,13 +118,44 @@ const BookingDetailPaneAdvanced = ({ booking, onClose }) => {
         <div className="border rounded-lg p-4">
             <h4 className="font-semibold mb-3 flex items-center gap-2"><DollarSign className="h-4 w-4" />Financials</h4>
             <div className="space-y-2">
-                <PaymentStatus label="Deposit" amount={booking.totalValue * 0.5} status="paid" />
-                <PaymentStatus label="Balance" amount={booking.balance} status={booking.balance > 0 ? "pending" : "paid"} />
+                {/* Show deposit information if available */}
+                {booking.depositType && booking.depositType !== 'None' && booking.depositAmount > 0 ? (
+                  <>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-600">Deposit ({booking.depositType}):</span>
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium">${booking.depositAmount.toLocaleString('en-AU', { minimumFractionDigits: 2 })}</span>
+                        <Badge variant="outline" className="bg-green-100 text-green-800">Paid</Badge>
+                      </div>
+                    </div>
+                    {booking.depositType === 'Percentage' && (
+                      <div className="text-xs text-gray-500 ml-4">
+                        {booking.depositValue}% of ${booking.totalValue.toLocaleString('en-AU', { minimumFractionDigits: 2 })}
+                      </div>
+                    )}
+                    <PaymentStatus label="Balance" amount={booking.totalValue - booking.depositAmount} status={booking.balance > booking.depositAmount ? "pending" : "paid"} />
+                  </>
+                ) : (
+                  <>
+                    <PaymentStatus label="Deposit" amount={booking.totalValue * 0.5} status="paid" />
+                    <PaymentStatus label="Balance" amount={booking.balance} status={booking.balance > 0 ? "pending" : "paid"} />
+                  </>
+                )}
                 <hr className="my-2" />
                 <div className="flex justify-between font-bold text-base">
                     <span>Total Value:</span>
                     <span>${booking.totalValue.toLocaleString('en-AU')}</span>
                 </div>
+                
+                {/* Show source information if from quotation */}
+                {booking.quotationId && (
+                  <div className="mt-2 pt-2 border-t border-gray-200">
+                    <div className="flex justify-between text-xs text-gray-500">
+                      <span>Source:</span>
+                      <span>From Quotation {booking.quotationId}</span>
+                    </div>
+                  </div>
+                )}
             </div>
         </div>
 

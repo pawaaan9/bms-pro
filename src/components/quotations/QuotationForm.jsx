@@ -46,7 +46,9 @@ const QuotationForm = ({
     guestCount: '',
     totalAmount: 0,
     validUntil: '',
-    notes: ''
+    notes: '',
+    depositType: 'None',
+    depositValue: 0
   });
   const [errors, setErrors] = useState({});
 
@@ -60,6 +62,8 @@ const QuotationForm = ({
         ]);
         setResources(resourcesData);
         setPricingData(pricingData);
+        console.log('Loaded pricing data:', pricingData);
+        console.log('Loaded resources data:', resourcesData);
       } catch (error) {
         console.error('Error loading data:', error);
       }
@@ -69,6 +73,26 @@ const QuotationForm = ({
       loadData();
     }
   }, [isOpen, token]);
+
+  // Auto-calculate price when pricing data is loaded and form has required fields
+  useEffect(() => {
+    if (pricingData && pricingData.length > 0 && 
+        formData.resource && formData.eventDate && formData.startTime && formData.endTime && 
+        formData.totalAmount === 0) {
+      const calculatedRate = calculateResourceRate(
+        pricingData,
+        formData.resource,
+        formData.eventDate,
+        formData.startTime,
+        formData.endTime
+      );
+      
+      if (calculatedRate > 0) {
+        console.log('Auto-calculating price on data load:', calculatedRate);
+        setFormData(prev => ({ ...prev, totalAmount: calculatedRate }));
+      }
+    }
+  }, [pricingData, formData.resource, formData.eventDate, formData.startTime, formData.endTime]);
 
   // Prevent background scrolling when modal is open
   useEffect(() => {
@@ -101,7 +125,9 @@ const QuotationForm = ({
         guestCount: quotation.guestCount || '',
         totalAmount: quotation.totalAmount || 0,
         validUntil: quotation.validUntil ? new Date(quotation.validUntil).toISOString().split('T')[0] : '',
-        notes: quotation.notes || ''
+        notes: quotation.notes || '',
+        depositType: quotation.depositType || 'None',
+        depositValue: quotation.depositValue || 0
       });
     } else {
       // Reset form for new quotation
@@ -117,12 +143,24 @@ const QuotationForm = ({
         guestCount: '',
         totalAmount: 0,
         validUntil: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], // 14 days from now
-        notes: ''
+        notes: '',
+        depositType: 'None',
+        depositValue: 0
       });
     }
     setErrors({});
   }, [quotation, isOpen]);
 
+
+  // Calculate deposit amount based on type and value
+  const calculateDepositAmount = (depositType, depositValue, totalAmount) => {
+    if (depositType === 'Fixed') {
+      return parseFloat(depositValue) || 0;
+    } else if (depositType === 'Percentage') {
+      return (totalAmount * (parseFloat(depositValue) || 0)) / 100;
+    }
+    return 0;
+  };
 
   const handleInputChange = (field, value) => {
     setFormData(prev => {
@@ -139,10 +177,17 @@ const QuotationForm = ({
             newFormData.endTime
           );
           
-          // Only auto-set if the current total amount is 0 (not manually set)
-          if (prev.totalAmount === 0) {
-            newFormData.totalAmount = calculatedRate;
-          }
+          console.log('Auto-calculating price:', {
+            resource: newFormData.resource,
+            eventDate: newFormData.eventDate,
+            startTime: newFormData.startTime,
+            endTime: newFormData.endTime,
+            calculatedRate: calculatedRate,
+            currentTotal: prev.totalAmount
+          });
+          
+          // Always auto-set the calculated rate when all required fields are present
+          newFormData.totalAmount = calculatedRate;
         }
       }
       
@@ -182,6 +227,15 @@ const QuotationForm = ({
 
     if (formData.totalAmount <= 0) {
       newErrors.totalAmount = 'Total amount must be greater than 0';
+    }
+
+    // Validate deposit fields
+    if (formData.depositType === 'Fixed' && (!formData.depositValue || formData.depositValue <= 0)) {
+      newErrors.depositValue = 'Deposit value is required and must be greater than 0 for Fixed deposit type';
+    }
+
+    if (formData.depositType === 'Percentage' && (!formData.depositValue || formData.depositValue <= 0 || formData.depositValue > 100)) {
+      newErrors.depositValue = 'Deposit percentage must be between 1 and 100';
     }
 
     setErrors(newErrors);
@@ -237,7 +291,9 @@ const QuotationForm = ({
       guestCount: '',
       totalAmount: 0,
       validUntil: '',
-      notes: ''
+      notes: '',
+      depositType: 'None',
+      depositValue: 0
     });
     setErrors({});
     onClose();
@@ -445,7 +501,12 @@ const QuotationForm = ({
                     />
                     {formData.totalAmount > 0 && formData.resource && formData.eventDate && formData.startTime && formData.endTime && (
                       <div className="absolute -top-6 right-0 text-xs text-green-600 bg-green-50 px-2 py-1 rounded">
-                        Auto-calculated
+                        ✓ Auto-calculated
+                      </div>
+                    )}
+                    {formData.totalAmount === 0 && formData.resource && formData.eventDate && formData.startTime && formData.endTime && pricingData && pricingData.length === 0 && (
+                      <div className="absolute -top-6 right-0 text-xs text-orange-600 bg-orange-50 px-2 py-1 rounded">
+                        ⚠ No pricing data
                       </div>
                     )}
                   </div>
@@ -453,15 +514,12 @@ const QuotationForm = ({
                     <p className="text-sm text-red-500 mt-1">{errors.totalAmount}</p>
                   )}
                   {formData.resource && formData.eventDate && formData.startTime && formData.endTime && (
-                    <div className="flex items-center justify-between mt-1">
-                      <p className="text-xs text-gray-500">
-                        Rate automatically calculated based on resource pricing and event duration
-                      </p>
+                    <div className="mt-2">
                       <Button
                         type="button"
                         variant="outline"
                         size="sm"
-                        className="h-6 px-2 text-xs"
+                        className="w-full"
                         onClick={() => {
                           const calculatedRate = calculateResourceRate(
                             pricingData,
@@ -470,12 +528,22 @@ const QuotationForm = ({
                             formData.startTime,
                             formData.endTime
                           );
+                          console.log('Manual price calculation:', {
+                            resource: formData.resource,
+                            eventDate: formData.eventDate,
+                            startTime: formData.startTime,
+                            endTime: formData.endTime,
+                            calculatedRate: calculatedRate
+                          });
                           handleInputChange('totalAmount', calculatedRate);
                         }}
                       >
-                        <Calculator className="h-3 w-3 mr-1" />
-                        Recalculate
+                        <Calculator className="h-4 w-4 mr-2" />
+                        Auto Calculate Price
                       </Button>
+                      <p className="text-xs text-gray-500 mt-1 text-center">
+                        Calculates based on resource pricing and event duration
+                      </p>
                     </div>
                   )}
                 </div>
@@ -488,6 +556,65 @@ const QuotationForm = ({
                     onChange={(e) => handleInputChange('validUntil', e.target.value)}
                   />
                 </div>
+              </div>
+              
+              {/* Deposit Information */}
+              <div className="border-t pt-4">
+                <h4 className="text-md font-semibold mb-3">Deposit Information</h4>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+                  <div>
+                    <Label htmlFor="depositType">Deposit Type</Label>
+                    <Select value={formData.depositType} onValueChange={(value) => handleInputChange('depositType', value)}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select deposit type" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="None">None</SelectItem>
+                        <SelectItem value="Fixed">Fixed Amount</SelectItem>
+                        <SelectItem value="Percentage">Percentage</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label htmlFor="depositValue">
+                      {formData.depositType === 'Fixed' ? 'Deposit Amount (AUD)' : 
+                       formData.depositType === 'Percentage' ? 'Deposit Percentage (%)' : 
+                       'Deposit Value'}
+                    </Label>
+                    <Input
+                      id="depositValue"
+                      type="number"
+                      min="0"
+                      step={formData.depositType === 'Percentage' ? '1' : '0.01'}
+                      max={formData.depositType === 'Percentage' ? '100' : undefined}
+                      value={formData.depositValue}
+                      onChange={(e) => handleInputChange('depositValue', parseFloat(e.target.value) || 0)}
+                      className={errors.depositValue ? 'border-red-500' : ''}
+                      placeholder={formData.depositType === 'Percentage' ? '0' : '0.00'}
+                      disabled={formData.depositType === 'None'}
+                    />
+                    {errors.depositValue && (
+                      <p className="text-sm text-red-500 mt-1">{errors.depositValue}</p>
+                    )}
+                  </div>
+                </div>
+                
+                {/* Deposit Amount Display */}
+                {formData.depositType !== 'None' && formData.depositValue > 0 && formData.totalAmount > 0 && (
+                  <div className="mt-3 p-3 bg-blue-50 rounded-lg border border-blue-200">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-medium text-blue-900">Calculated Deposit Amount:</span>
+                      <span className="text-lg font-bold text-blue-900">
+                        ${calculateDepositAmount(formData.depositType, formData.depositValue, formData.totalAmount).toFixed(2)} AUD
+                      </span>
+                    </div>
+                    {formData.depositType === 'Percentage' && (
+                      <p className="text-xs text-blue-700 mt-1">
+                        {formData.depositValue}% of ${formData.totalAmount.toFixed(2)} = ${calculateDepositAmount(formData.depositType, formData.depositValue, formData.totalAmount).toFixed(2)}
+                      </p>
+                    )}
+                  </div>
+                )}
               </div>
               <div>
                 <Label htmlFor="notes">Notes</Label>

@@ -94,6 +94,11 @@ const transformBookingData = (backendBooking) => {
     customerAvatar: backendBooking.customerAvatar,
     bookingSource: backendBooking.bookingSource,
     priceDetails: backendBooking.priceDetails,
+    // Deposit information
+    depositType: backendBooking.depositType,
+    depositValue: backendBooking.depositValue,
+    depositAmount: backendBooking.depositAmount,
+    quotationId: backendBooking.quotationId,
   };
 };
 

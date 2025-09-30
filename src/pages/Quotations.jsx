@@ -24,7 +24,10 @@ import {
   XCircle,
   Clock,
   AlertTriangle,
-  Loader2
+  Loader2,
+  Mail,
+  Phone,
+  Users
 } from 'lucide-react';
 import {
   Table,
@@ -618,6 +621,11 @@ export default function Quotations() {
                       Amount {getSortIcon('totalAmount')}
                     </Button>
                   </TableHead>
+                  <TableHead>
+                    <Button variant="ghost" onClick={() => handleSort('depositAmount')} className="p-0 h-auto font-semibold">
+                      Deposit {getSortIcon('depositAmount')}
+                    </Button>
+                  </TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>
                     <Button variant="ghost" onClick={() => handleSort('validUntil')} className="p-0 h-auto font-semibold">
@@ -630,7 +638,7 @@ export default function Quotations() {
               <TableBody>
                 {isLoading ? (
                   <TableRow>
-                    <TableCell colSpan={9} className="h-24 text-center">
+                    <TableCell colSpan={10} className="h-24 text-center">
                       <div className="flex flex-col items-center gap-2">
                         <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
                         <p className="text-gray-500">Loading quotations...</p>
@@ -679,6 +687,18 @@ export default function Quotations() {
                         </div>
                       </TableCell>
                       <TableCell>
+                        {quotation.depositType && quotation.depositType !== 'None' ? (
+                          <div className="flex items-center">
+                            <DollarSign className="w-4 h-4 text-blue-400 mr-1" />
+                            <span className="font-mono font-semibold text-blue-600">
+                              ${quotation.depositAmount?.toLocaleString('en-AU', { minimumFractionDigits: 2 }) || '0.00'} AUD
+                            </span>
+                          </div>
+                        ) : (
+                          <span className="text-gray-400 text-sm">No deposit</span>
+                        )}
+                      </TableCell>
+                      <TableCell>
                         <StatusBadge status={quotation.status} />
                       </TableCell>
                       <TableCell className="text-sm text-gray-500">
@@ -691,7 +711,7 @@ export default function Quotations() {
                   ))
                 ) : (
                   <TableRow>
-                    <TableCell colSpan={9} className="h-24 text-center">
+                    <TableCell colSpan={10} className="h-24 text-center">
                       <div className="flex flex-col items-center gap-2">
                         <FileText className="h-8 w-8 text-gray-400" />
                         <p className="text-gray-500">No quotations found.</p>
@@ -802,6 +822,39 @@ export default function Quotations() {
                       ${selectedQuotation.totalAmount.toLocaleString('en-AU', { minimumFractionDigits: 2 })} AUD
                     </span>
                   </div>
+                  
+                  {/* Deposit Information */}
+                  {selectedQuotation.depositType && selectedQuotation.depositType !== 'None' && (
+                    <div className="border-t border-green-200 pt-2 mt-2">
+                      <div className="flex justify-between items-center">
+                        <span className="text-gray-600">Deposit Type:</span>
+                        <span className="font-medium">{selectedQuotation.depositType}</span>
+                      </div>
+                      {selectedQuotation.depositType === 'Fixed' && (
+                        <div className="flex justify-between items-center">
+                          <span className="text-gray-600">Deposit Amount:</span>
+                          <span className="font-mono font-semibold text-blue-600">
+                            ${selectedQuotation.depositAmount?.toLocaleString('en-AU', { minimumFractionDigits: 2 })} AUD
+                          </span>
+                        </div>
+                      )}
+                      {selectedQuotation.depositType === 'Percentage' && (
+                        <>
+                          <div className="flex justify-between items-center">
+                            <span className="text-gray-600">Deposit Percentage:</span>
+                            <span className="font-medium">{selectedQuotation.depositValue}%</span>
+                          </div>
+                          <div className="flex justify-between items-center">
+                            <span className="text-gray-600">Deposit Amount:</span>
+                            <span className="font-mono font-semibold text-blue-600">
+                              ${selectedQuotation.depositAmount?.toLocaleString('en-AU', { minimumFractionDigits: 2 })} AUD
+                            </span>
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  )}
+                  
                   <div className="flex justify-between items-center">
                     <span className="text-gray-600">Valid Until:</span>
                     <span className="font-medium">{format(selectedQuotation.validUntil, 'dd MMM yyyy')}</span>

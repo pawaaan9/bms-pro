@@ -600,11 +600,45 @@ const InvoiceDetailPane = ({ invoice, onClose, token }) => {
             <h3 className="font-bold text-gray-800">Payment Summary</h3>
           </div>
           
+          {/* Show deposit information if this is a final invoice with deposit */}
+          {invoice.depositPaid > 0 && (
+            <div className="bg-blue-50 rounded-lg p-4 border border-blue-200">
+              <div className="flex items-center gap-2 mb-3">
+                <CheckCircle className="h-4 w-4 text-blue-600" />
+                <h4 className="font-semibold text-blue-800">Deposit Applied</h4>
+              </div>
+              <div className="space-y-2 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Subtotal:</span>
+                  <span className="font-mono">${invoice.subtotal.toLocaleString('en-AU', { minimumFractionDigits: 2 })}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-600">GST (10%):</span>
+                  <span className="font-mono">${invoice.gst.toLocaleString('en-AU', { minimumFractionDigits: 2 })}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Total Amount:</span>
+                  <span className="font-mono">${invoice.total.toLocaleString('en-AU', { minimumFractionDigits: 2 })}</span>
+                </div>
+                <div className="flex justify-between border-t pt-2">
+                  <span className="text-blue-700 font-medium">Deposit Paid:</span>
+                  <span className="font-mono text-blue-700 font-bold">-${invoice.depositPaid.toLocaleString('en-AU', { minimumFractionDigits: 2 })}</span>
+                </div>
+                <div className="flex justify-between border-t pt-2 font-bold">
+                  <span className="text-gray-800">Final Amount Due:</span>
+                  <span className="font-mono text-gray-900">${invoice.finalTotal.toLocaleString('en-AU', { minimumFractionDigits: 2 })}</span>
+                </div>
+              </div>
+            </div>
+          )}
+          
           <div className="grid grid-cols-2 gap-4">
             <div className="bg-white/70 rounded-lg p-3 text-center">
-              <p className="text-xs text-gray-600 uppercase tracking-wide">Total Amount</p>
+              <p className="text-xs text-gray-600 uppercase tracking-wide">
+                {invoice.depositPaid > 0 ? 'Final Amount' : 'Total Amount'}
+              </p>
               <p className="text-lg font-bold font-mono text-gray-900">
-                ${invoice.total.toLocaleString('en-AU', { minimumFractionDigits: 2 })}
+                ${(invoice.depositPaid > 0 ? invoice.finalTotal : invoice.total).toLocaleString('en-AU', { minimumFractionDigits: 2 })}
               </p>
             </div>
             
