@@ -1175,8 +1175,8 @@ export default function Reports() {
           </CardContent>
         </Card>
 
-        {/* Anomaly Detection */}
-        <Card>
+        {/* Anomaly Detection - Hidden for now */}
+        {/* <Card>
           <CardHeader>
             <CardTitle>Anomaly Watch</CardTitle>
           </CardHeader>
@@ -1219,7 +1219,7 @@ export default function Reports() {
               ))}
             </div>
           </CardContent>
-        </Card>
+        </Card> */}
 
         {/* Dialogs */}
         <ScheduleEmailDialog />
