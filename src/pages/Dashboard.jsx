@@ -414,7 +414,7 @@ export default function Dashboard() {
             </div>
             
             <p className="text-white text-sm sm:text-base lg:text-lg relative z-10 transform hover:translate-x-2 transition-transform duration-300">
-              Ready to manage your bookings today? Let's get started! 🚀
+              Ready to manage your bookings today? Let's get started! 
             </p>
           </div>
           

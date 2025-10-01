@@ -192,9 +192,6 @@ export default function CustomersPage() {
                 <RefreshCw className={`mr-2 h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
                 {refreshing ? 'Refreshing...' : 'Refresh'}
               </Button>
-              <Button variant="outline"><Users className="mr-2 h-4 w-4" />Merge Duplicates</Button>
-              <Button variant="outline"><Download className="mr-2 h-4 w-4" />Export CSV</Button>
-              <Button><Plus className="mr-2 h-4 w-4" />New Customer</Button>
             </div>
           </header>
 
