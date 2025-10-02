@@ -22,6 +22,7 @@ import {
   Edit,
   RefreshCw,
   AlertTriangle,
+  Calendar,
 } from 'lucide-react';
 import {
   Table,
@@ -175,80 +176,167 @@ export default function CustomersPage() {
       <div className="flex h-full">
         <motion.main 
             layout 
-            className={`flex-1 space-y-6 transition-all duration-300 ${activeCustomer ? 'pr-[450px]' : 'pr-0'}`}
+            className={`flex-1 space-y-4 sm:space-y-6 transition-all duration-300 w-full max-w-full overflow-x-hidden ${activeCustomer ? 'pr-0 lg:pr-[450px]' : 'pr-0'}`}
         >
           {/* Header */}
-          <header className="flex flex-wrap items-center justify-between gap-4">
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900">Customers</h1>
-              <p className="mt-1 text-gray-500">Directory, insights and actions for every customer.</p>
-            </div>
-            <div className="flex gap-2">
-              <Button 
-                variant="outline" 
-                onClick={() => fetchCustomers(true)}
-                disabled={refreshing}
-              >
-                <RefreshCw className={`mr-2 h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
-                {refreshing ? 'Refreshing...' : 'Refresh'}
-              </Button>
+          <header className="relative overflow-hidden bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 rounded-xl sm:rounded-2xl p-4 sm:p-6 lg:p-8 border border-blue-100">
+            <div className="absolute inset-0 bg-gradient-to-r from-blue-600/5 to-purple-600/5"></div>
+            <div className="relative flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3 sm:gap-4 lg:gap-6">
+              <div className="space-y-2 sm:space-y-3 flex-1">
+                <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 lg:gap-4">
+                  <div className="p-2 sm:p-3 bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg sm:rounded-xl shadow-lg w-fit">
+                    <Users className="h-5 w-5 sm:h-6 sm:w-6 lg:h-8 lg:w-8 text-white" />
+                  </div>
+                  <div className="flex-1">
+                    <h1 className="text-xl sm:text-2xl lg:text-3xl xl:text-4xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+                      Customers
+                    </h1>
+                    <p className="text-gray-600 font-medium text-xs sm:text-sm lg:text-base mt-1">
+                      Directory, insights and actions for every customer
+                    </p>
+                  </div>
+                </div>
+                <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2 lg:gap-4 text-xs sm:text-sm text-gray-500">
+                  <div className="flex items-center gap-1 sm:gap-2">
+                    <UserCheck className="h-3 w-3 sm:h-4 sm:w-4 text-blue-500" />
+                    <span>Customer Analytics</span>
+                  </div>
+                  <div className="flex items-center gap-1 sm:gap-2">
+                    <BarChartHorizontal className="h-3 w-3 sm:h-4 sm:w-4 text-green-500" />
+                    <span>RFM Analysis</span>
+                  </div>
+                </div>
+              </div>
+              <div className="flex gap-2">
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={() => fetchCustomers(true)}
+                  disabled={refreshing}
+                  className="bg-white/80 backdrop-blur-sm border-blue-200 hover:bg-blue-50 hover:border-blue-300"
+                >
+                  <RefreshCw className={`mr-2 h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
+                  {refreshing ? 'Refreshing...' : 'Refresh'}
+                </Button>
+              </div>
             </div>
           </header>
 
           {/* Analytics Shelf */}
-          <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            <Card>
-              <CardContent className="pt-6">
-                <p className="text-sm font-medium text-gray-500">Total Customers</p>
-                <p className="text-2xl font-bold">{customers.length}</p>
-              </CardContent>
-            </Card>
-             <Card>
-              <CardContent className="pt-6">
-                <p className="text-sm font-medium text-gray-500">VIP Customers</p>
-                <p className="text-2xl font-bold">{customers.filter(c => c.tags.includes('VIP')).length}</p>
-              </CardContent>
-            </Card>
-             <Card>
-              <CardContent className="pt-6">
-                <p className="text-sm font-medium text-gray-500">At-Risk Customers</p>
-                <p className="text-2xl font-bold">{customers.filter(c => c.segment === 'At-Risk').length}</p>
-              </CardContent>
-            </Card>
-             <Card>
-              <CardContent className="pt-6">
-                <p className="text-sm font-medium text-gray-500">Top Segment</p>
-                <p className="text-2xl font-bold">
-                  {customers.length > 0 ? 
-                    customers.reduce((acc, curr) => {
-                      acc[curr.segment] = (acc[curr.segment] || 0) + 1;
-                      return acc;
-                    }, {}) && Object.entries(customers.reduce((acc, curr) => {
-                      acc[curr.segment] = (acc[curr.segment] || 0) + 1;
-                      return acc;
-                    }, {})).sort(([,a], [,b]) => b - a)[0]?.[0] || 'N/A'
-                    : 'N/A'
-                  }
-                </p>
-              </CardContent>
-            </Card>
+          <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 w-full max-w-full">
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.1 }}
+            >
+              <Card className="group border border-gray-200 shadow-sm hover:shadow-lg transition-all duration-300 bg-gradient-to-br from-blue-50 to-indigo-50 hover:from-blue-100 hover:to-indigo-100 w-full max-w-full">
+                <CardContent className="pt-4 p-3 w-full">
+                  <div className="flex items-center justify-between w-full">
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-medium text-gray-600 truncate">Total Customers</p>
+                      <p className="text-lg font-bold text-blue-600 mt-1">{customers.length}</p>
+                    </div>
+                    <div className="p-2 bg-gradient-to-r from-blue-500 to-indigo-600 rounded-lg shadow-lg flex-shrink-0 ml-2">
+                      <Users className="h-4 w-4 text-white" />
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </motion.div>
+            
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.2 }}
+            >
+              <Card className="group border border-gray-200 shadow-sm hover:shadow-lg transition-all duration-300 bg-gradient-to-br from-red-50 to-pink-50 hover:from-red-100 hover:to-pink-100 w-full max-w-full">
+                <CardContent className="pt-4 p-3 w-full">
+                  <div className="flex items-center justify-between w-full">
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-medium text-gray-600 truncate">VIP Customers</p>
+                      <p className="text-lg font-bold text-red-600 mt-1">{customers.filter(c => c.tags.includes('VIP')).length}</p>
+                    </div>
+                    <div className="p-2 bg-gradient-to-r from-red-500 to-pink-600 rounded-lg shadow-lg flex-shrink-0 ml-2">
+                      <UserCheck className="h-4 w-4 text-white" />
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </motion.div>
+            
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.3 }}
+            >
+              <Card className="group border border-gray-200 shadow-sm hover:shadow-lg transition-all duration-300 bg-gradient-to-br from-orange-50 to-yellow-50 hover:from-orange-100 hover:to-yellow-100 w-full max-w-full">
+                <CardContent className="pt-4 p-3 w-full">
+                  <div className="flex items-center justify-between w-full">
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-medium text-gray-600 truncate">At-Risk Customers</p>
+                      <p className="text-lg font-bold text-orange-600 mt-1">{customers.filter(c => c.segment === 'At-Risk').length}</p>
+                    </div>
+                    <div className="p-2 bg-gradient-to-r from-orange-500 to-yellow-600 rounded-lg shadow-lg flex-shrink-0 ml-2">
+                      <AlertTriangle className="h-4 w-4 text-white" />
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </motion.div>
+            
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.4 }}
+            >
+              <Card className="group border border-gray-200 shadow-sm hover:shadow-lg transition-all duration-300 bg-gradient-to-br from-green-50 to-emerald-50 hover:from-green-100 hover:to-emerald-100 w-full max-w-full">
+                <CardContent className="pt-4 p-3 w-full">
+                  <div className="flex items-center justify-between w-full">
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-medium text-gray-600 truncate">Top Segment</p>
+                      <p className="text-base font-bold text-green-600 mt-1 truncate">
+                        {customers.length > 0 ? 
+                          customers.reduce((acc, curr) => {
+                            acc[curr.segment] = (acc[curr.segment] || 0) + 1;
+                            return acc;
+                          }, {}) && Object.entries(customers.reduce((acc, curr) => {
+                            acc[curr.segment] = (acc[curr.segment] || 0) + 1;
+                            return acc;
+                          }, {})).sort(([,a], [,b]) => b - a)[0]?.[0] || 'N/A'
+                          : 'N/A'
+                        }
+                      </p>
+                    </div>
+                    <div className="p-2 bg-gradient-to-r from-green-500 to-emerald-600 rounded-lg shadow-lg flex-shrink-0 ml-2">
+                      <TrendingUp className="h-4 w-4 text-white" />
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </motion.div>
           </section>
 
           {/* Filter Bar */}
-          <Card>
-            <CardContent className="pt-6">
-              <div className="flex flex-wrap items-center gap-4">
-                <div className="relative flex-1 min-w-[250px]">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.5 }}
+          >
+            <Card className="border border-gray-200 shadow-sm bg-white/80 backdrop-blur-sm">
+              <CardContent className="pt-4 sm:pt-6 p-3 sm:p-6">
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 sm:gap-4">
+                  <div className="relative flex-1 min-w-0">
                   <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
                   <Input 
                     placeholder="Search name, email, phone..." 
-                    className="pl-10"
+                      className="pl-10 border-gray-200 focus:border-blue-300 focus:ring-blue-200 text-sm"
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
                   />
                 </div>
+                  <div className="flex gap-2 sm:gap-3">
                 <Select>
-                  <SelectTrigger className="w-full sm:w-[180px]">
+                      <SelectTrigger className="w-full sm:w-[160px] lg:w-[180px] border-gray-200 focus:border-blue-300 focus:ring-blue-200 text-sm">
                     <SelectValue placeholder="All Segments" />
                   </SelectTrigger>
                   <SelectContent>
@@ -257,13 +345,27 @@ export default function CustomersPage() {
                     <SelectItem value="at-risk">At-Risk</SelectItem>
                   </SelectContent>
                 </Select>
-                 <Button variant="outline" size="sm" onClick={() => setSearchTerm('')}>Clear</Button>
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      onClick={() => setSearchTerm('')}
+                      className="border-gray-200 hover:bg-gray-50 text-sm px-3 sm:px-4"
+                    >
+                      Clear
+                    </Button>
+                  </div>
               </div>
             </CardContent>
           </Card>
+          </motion.div>
           
           {/* Main Table */}
-          <Card>
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.6 }}
+          >
+            <Card className="border border-gray-200 shadow-sm bg-white/80 backdrop-blur-sm">
             <CardContent className="p-0">
               {loading ? (
                 <div className="flex items-center justify-center h-64">
@@ -344,6 +446,7 @@ export default function CustomersPage() {
               )}
             </CardContent>
           </Card>
+          </motion.div>
         </motion.main>
         
         {/* Customer Profile Pane */}
@@ -354,54 +457,99 @@ export default function CustomersPage() {
                     animate={{ x: '0%' }}
                     exit={{ x: '100%' }}
                     transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-                    className="fixed top-0 right-0 h-full w-[450px] bg-white border-l shadow-2xl z-20 flex flex-col"
+                    className="fixed top-0 right-0 h-full w-full sm:w-[400px] lg:w-[450px] bg-gradient-to-br from-white to-gray-50 border-l border-gray-200 shadow-2xl z-20 flex flex-col overflow-hidden"
                 >
-                    <div className="p-6 border-b">
-                        <div className="flex justify-between items-start">
-                             <div>
-                                <h2 className="text-xl font-bold">{activeCustomer.name}</h2>
-                                <div className="text-sm text-gray-500 mt-1">{activeCustomer.email}</div>
-                                {activeCustomer.phone && <div className="text-sm text-gray-500">{activeCustomer.phone}</div>}
-                                <div className="mt-2">
-                                  {activeCustomer.tags.map(tag => <Badge key={tag} variant={tag === 'VIP' ? 'destructive' : 'secondary'} className="mr-1">{tag}</Badge>)}
+                    <div className="relative overflow-hidden bg-gradient-to-r from-blue-50 to-purple-50 p-4 sm:p-6 border-b border-gray-200">
+                        <div className="absolute inset-0 bg-gradient-to-r from-blue-600/5 to-purple-600/5"></div>
+                        <div className="relative flex justify-between items-start">
+                             <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-2 sm:gap-3 mb-2 sm:mb-3">
+                                  <div className="p-2 bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg shadow-lg flex-shrink-0">
+                                    <Users className="h-4 w-4 sm:h-5 sm:w-5 text-white" />
+                                  </div>
+                                  <h2 className="text-lg sm:text-xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent truncate">{activeCustomer.name}</h2>
+                                </div>
+                                <div className="text-xs sm:text-sm text-gray-600 mb-1 truncate">{activeCustomer.email}</div>
+                                {activeCustomer.phone && <div className="text-xs sm:text-sm text-gray-600 mb-2 sm:mb-3 truncate">{activeCustomer.phone}</div>}
+                                <div className="flex flex-wrap gap-1 sm:gap-2">
+                                  {activeCustomer.tags.map(tag => (
+                                    <Badge 
+                                      key={tag} 
+                                      variant={tag === 'VIP' ? 'destructive' : 'secondary'} 
+                                      className={`text-xs ${
+                                        tag === 'VIP' 
+                                          ? 'bg-gradient-to-r from-red-500 to-pink-600 text-white border-0' 
+                                          : 'bg-gradient-to-r from-gray-100 to-gray-200 text-gray-700 border-gray-300'
+                                      }`}
+                                    >
+                                      {tag}
+                                    </Badge>
+                                  ))}
                                 </div>
                             </div>
-                            <Button variant="ghost" size="icon" onClick={() => setActiveCustomer(null)}>
-                                <XCircle className="h-5 w-5" />
+                            <Button 
+                              variant="ghost" 
+                              size="icon" 
+                              onClick={() => setActiveCustomer(null)}
+                              className="bg-white/80 backdrop-blur-sm border border-gray-200 hover:bg-gray-50 flex-shrink-0 ml-2"
+                            >
+                                <XCircle className="h-4 w-4 sm:h-5 sm:w-5" />
                             </Button>
                         </div>
                     </div>
-                    <div className="flex-1 overflow-y-auto p-6 space-y-6">
-                         <Card>
-                            <CardContent className="pt-6">
-                                <h3 className="text-lg font-semibold mb-2">Analytics Snapshot</h3>
-                                <div className="grid grid-cols-2 gap-4 text-sm">
-                                    <div><span className="font-medium text-gray-600">RFM Score:</span> <Badge variant="outline">{activeCustomer.rfm}</Badge></div>
-                                    <div><span className="font-medium text-gray-600">CLV (est.):</span> ${activeCustomer.clv.toFixed(0)}</div>
-                                    <div><span className="font-medium text-gray-600">Lifetime Spend:</span> ${activeCustomer.lifetimeSpend.toFixed(2)}</div>
-                                    <div><span className="font-medium text-gray-600">Total Bookings:</span> {activeCustomer.totalBookings}</div>
+                    <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4 sm:space-y-6">
+                         <Card className="border border-gray-200 shadow-sm bg-gradient-to-br from-blue-50 to-indigo-50">
+                            <CardContent className="pt-4 sm:pt-6 p-3 sm:p-6">
+                                <div className="flex items-center gap-2 mb-3 sm:mb-4">
+                                  <div className="p-2 bg-gradient-to-r from-blue-500 to-indigo-600 rounded-lg">
+                                    <BarChartHorizontal className="h-3 w-3 sm:h-4 sm:w-4 text-white" />
+                                  </div>
+                                  <h3 className="text-sm sm:text-lg font-semibold text-gray-800">Analytics Snapshot</h3>
+                                </div>
+                                <div className="grid grid-cols-2 gap-2 sm:gap-4 text-xs sm:text-sm">
+                                    <div className="p-2 sm:p-3 bg-white/60 rounded-lg border border-blue-100">
+                                      <span className="font-medium text-gray-600 block mb-1 text-xs">RFM Score</span> 
+                                      <Badge className="bg-gradient-to-r from-blue-500 to-indigo-600 text-white border-0 text-xs">{activeCustomer.rfm}</Badge>
+                                    </div>
+                                    <div className="p-2 sm:p-3 bg-white/60 rounded-lg border border-green-100">
+                                      <span className="font-medium text-gray-600 block mb-1 text-xs">CLV (est.)</span> 
+                                      <span className="text-green-600 font-bold text-xs sm:text-sm">${activeCustomer.clv.toFixed(0)}</span>
+                                    </div>
+                                    <div className="p-2 sm:p-3 bg-white/60 rounded-lg border border-purple-100">
+                                      <span className="font-medium text-gray-600 block mb-1 text-xs">Lifetime Spend</span> 
+                                      <span className="text-purple-600 font-bold text-xs sm:text-sm">${activeCustomer.lifetimeSpend.toFixed(2)}</span>
+                                    </div>
+                                    <div className="p-2 sm:p-3 bg-white/60 rounded-lg border border-orange-100">
+                                      <span className="font-medium text-gray-600 block mb-1 text-xs">Total Bookings</span> 
+                                      <span className="text-orange-600 font-bold text-xs sm:text-sm">{activeCustomer.totalBookings}</span>
+                                    </div>
                                 </div>
                             </CardContent>
                         </Card>
-                        <Card>
-                             <CardContent className="pt-6">
-                                <h3 className="text-lg font-semibold mb-2">Recent Bookings</h3>
-                                <ul className="space-y-2">
+                        <Card className="border border-gray-200 shadow-sm bg-gradient-to-br from-green-50 to-emerald-50">
+                             <CardContent className="pt-4 sm:pt-6 p-3 sm:p-6">
+                                <div className="flex items-center gap-2 mb-3 sm:mb-4">
+                                  <div className="p-2 bg-gradient-to-r from-green-500 to-emerald-600 rounded-lg">
+                                    <Calendar className="h-3 w-3 sm:h-4 sm:w-4 text-white" />
+                                  </div>
+                                  <h3 className="text-sm sm:text-lg font-semibold text-gray-800">Recent Bookings</h3>
+                                </div>
+                                <ul className="space-y-2 sm:space-y-3">
                                 {activeCustomer.bookings.slice(0, 5).map((b, i) => (
-                                    <li key={i} className="text-sm p-2 bg-gray-50 rounded-md">
-                                        <div className="flex justify-between items-start">
-                                          <div>
-                                            <div className="font-medium">{b.eventType}</div>
-                                            <div className="text-xs text-gray-500">{new Date(b.date).toLocaleDateString('en-AU')} - {b.startTime} to {b.endTime}</div>
-                                            <div className="text-xs text-gray-500">{b.resource}</div>
+                                    <li key={i} className="text-xs sm:text-sm p-2 sm:p-3 bg-white/60 rounded-lg border border-green-100 hover:bg-white/80 transition-colors">
+                                        <div className="flex justify-between items-start gap-2">
+                                          <div className="flex-1 min-w-0">
+                                            <div className="font-medium text-gray-800 mb-1 truncate">{b.eventType}</div>
+                                            <div className="text-xs text-gray-600 mb-1">{new Date(b.date).toLocaleDateString('en-AU')} - {b.startTime} to {b.endTime}</div>
+                                            <div className="text-xs text-gray-500 truncate">{b.resource}</div>
                                           </div>
-                                          <div className="text-right">
-                                            <div className="font-medium">${b.spend.toFixed(2)}</div>
+                                          <div className="text-right flex-shrink-0">
+                                            <div className="font-bold text-green-600 mb-1 text-xs sm:text-sm">${b.spend.toFixed(2)}</div>
                                             <Badge 
-                                              variant={b.status === 'confirmed' ? 'default' : b.status === 'cancelled' ? 'destructive' : 'secondary'}
-                                              className="text-xs"
+                                              variant="outline"
+                                              className="text-xs text-black border-gray-300 bg-white hover:bg-gray-50"
                                             >
-                                              {b.status}
+                                              {b.status || 'Unknown'}
                                             </Badge>
                                           </div>
                                         </div>
@@ -410,13 +558,39 @@ export default function CustomersPage() {
                                 </ul>
                             </CardContent>
                         </Card>
-                        <Card>
-                           <CardContent className="pt-6">
-                                <h3 className="text-lg font-semibold mb-2">Privacy & Actions</h3>
-                                <div className="space-y-2">
-                                     <Button variant="outline" className="w-full"><ShieldCheck className="mr-2 h-4 w-4" />Access Data (Export)</Button>
-                                     <Button variant="outline" className="w-full"><Edit className="mr-2 h-4 w-4" />Correct Profile</Button>
-                                     <Button variant="destructive" className="w-full"><UserX className="mr-2 h-4 w-4" />Anonymise Customer</Button>
+                        <Card className="border border-gray-200 shadow-sm bg-gradient-to-br from-purple-50 to-pink-50">
+                           <CardContent className="pt-4 sm:pt-6 p-3 sm:p-6">
+                                <div className="flex items-center gap-2 mb-3 sm:mb-4">
+                                  <div className="p-2 bg-gradient-to-r from-purple-500 to-pink-600 rounded-lg">
+                                    <ShieldCheck className="h-3 w-3 sm:h-4 sm:w-4 text-white" />
+                                  </div>
+                                  <h3 className="text-sm sm:text-lg font-semibold text-gray-800">Privacy & Actions</h3>
+                                </div>
+                                <div className="space-y-2 sm:space-y-3">
+                                     <Button 
+                                       variant="outline" 
+                                       className="w-full bg-white/60 border-purple-200 hover:bg-purple-50 hover:border-purple-300 text-gray-700 text-xs sm:text-sm"
+                                     >
+                                       <ShieldCheck className="mr-1 sm:mr-2 h-3 w-3 sm:h-4 sm:w-4" />
+                                       <span className="hidden sm:inline">Access Data (Export)</span>
+                                       <span className="sm:hidden">Export</span>
+                                     </Button>
+                                     <Button 
+                                       variant="outline" 
+                                       className="w-full bg-white/60 border-blue-200 hover:bg-blue-50 hover:border-blue-300 text-gray-700 text-xs sm:text-sm"
+                                     >
+                                       <Edit className="mr-1 sm:mr-2 h-3 w-3 sm:h-4 sm:w-4" />
+                                       <span className="hidden sm:inline">Correct Profile</span>
+                                       <span className="sm:hidden">Edit</span>
+                                     </Button>
+                                     <Button 
+                                       variant="destructive" 
+                                       className="w-full bg-gradient-to-r from-red-500 to-pink-600 hover:from-red-600 hover:to-pink-700 border-0 text-xs sm:text-sm"
+                                     >
+                                       <UserX className="mr-1 sm:mr-2 h-3 w-3 sm:h-4 sm:w-4" />
+                                       <span className="hidden sm:inline">Anonymise Customer</span>
+                                       <span className="sm:hidden">Anonymise</span>
+                                     </Button>
                                 </div>
                             </CardContent>
                         </Card>
