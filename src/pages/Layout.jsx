@@ -57,10 +57,9 @@ const navigationItems = [
 },
 {
   title: "Resources",
-  icon: Building2,
-  children: [
-  { title: "Resources", url: createPageUrl("Resources") },
-  { title: "Add-ons", url: createPageUrl("PricingAddons") }]
+  url: createPageUrl("Resources"),
+  icon: Building2
+  // { title: "Add-ons", url: createPageUrl("PricingAddons") } // Temporarily hidden
 
 },
 {
@@ -256,8 +255,8 @@ export default function Layout({ children, currentPageName }) {
         'Confirmed': 'BookingsConfirmed',
         'Completed': 'BookingsCompleted',
         'Cancelled': 'BookingsCancelled',
-        'Resources': 'Resources',
-        'Add-ons': 'PricingAddons',
+        // 'Resources': 'Resources', // Now a direct navigation item
+        // 'Add-ons': 'PricingAddons', // Temporarily hidden
         'Rate Cards': 'PricingRatecards',
         'Send Email': 'CommsSendEmail',
         'Templates': 'CommsTemplates',
