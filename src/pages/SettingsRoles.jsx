@@ -4,13 +4,14 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/table';
+ 
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { GreenCheckbox } from '@/components/ui/green-checkbox';
 import { useAuth } from '@/contexts/AuthContext';
-import { Plus, Edit, Trash2, Shield, Users, UserPlus, Settings, Eye, EyeOff, Key } from 'lucide-react';
+import { Plus, Edit, Trash2, Shield, Users, UserPlus, Settings, Eye, EyeOff, Key, Search, RefreshCw } from 'lucide-react';
 
 export default function SettingsRoles() {
   const { user, isHallOwner, getToken } = useAuth();
@@ -19,6 +20,8 @@ export default function SettingsRoles() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [successMessage, setSuccessMessage] = useState('');
+  const [searchTerm, setSearchTerm] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all');
   
   // Dialog states
   const [addUserDialogOpen, setAddUserDialogOpen] = useState(false);
@@ -106,6 +109,15 @@ export default function SettingsRoles() {
       setLoading(false);
     }
   };
+
+  const filteredSubUsers = subUsers.filter((u) => {
+    const matchesSearch = searchTerm
+      ? (u.name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (u.email || '').toLowerCase().includes(searchTerm.toLowerCase())
+      : true;
+    const matchesStatus = statusFilter === 'all' ? true : (u.status || 'active') === statusFilter;
+    return matchesSearch && matchesStatus;
+  });
 
   const handleAddUser = async (e) => {
     e.preventDefault();
@@ -351,17 +363,37 @@ export default function SettingsRoles() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold">Roles & Permissions</h1>
-          <p className="text-gray-600 mt-1">Manage sub-user accounts and their access permissions.</p>
+      {/* Header - creative card style */}
+      <section className="relative overflow-hidden bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 rounded-xl sm:rounded-2xl p-4 sm:p-6 lg:p-8 border border-blue-100">
+        <div className="absolute inset-0 bg-gradient-to-r from-blue-600/5 to-purple-600/5"></div>
+        <div className="relative flex items-center justify-between gap-3 sm:gap-4 lg:gap-6">
+          <div className="space-y-2 sm:space-y-3 flex-1">
+            <div className="flex items-center gap-2 sm:gap-3 lg:gap-4">
+              <div className="p-2 sm:p-3 bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg sm:rounded-xl shadow-lg w-fit">
+                <Shield className="h-5 w-5 sm:h-6 sm:w-6 lg:h-8 lg:w-8 text-white" />
+              </div>
+              <div className="flex-1">
+                <h1 className="text-xl sm:text-2xl lg:text-3xl xl:text-4xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+                  Roles & Permissions
+                </h1>
+                <p className="text-gray-600 font-medium text-xs sm:text-sm lg:text-base mt-1">
+                  Manage sub-user accounts and their access permissions
+                </p>
+              </div>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <Button 
+              onClick={() => setAddUserDialogOpen(true)}
+              className="flex items-center gap-2 bg-white/80 backdrop-blur-sm border border-blue-200 hover:bg-blue-50 hover:border-blue-300 text-gray-800"
+              variant="outline"
+            >
+              <UserPlus className="h-4 w-4" />
+              Add Sub-User
+            </Button>
+          </div>
         </div>
-        <Button onClick={() => setAddUserDialogOpen(true)} className="flex items-center gap-2">
-          <UserPlus className="h-4 w-4" />
-          Add Sub-User
-        </Button>
-      </div>
+      </section>
 
       {/* Success Message */}
       {successMessage && (
@@ -432,106 +464,160 @@ export default function SettingsRoles() {
         </Card>
       </div>
 
-      {/* Sub-Users Table */}
-      <Card>
-        <CardContent className="p-0">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Name</TableHead>
-                <TableHead>Email</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Permissions</TableHead>
-                <TableHead>Created</TableHead>
-                <TableHead className="w-24">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {subUsers.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={6} className="text-center py-8">
-                    <div className="flex flex-col items-center gap-2">
-                      <Users className="h-8 w-8 text-muted-foreground" />
-                      <p className="text-muted-foreground">No sub-users found.</p>
-                      <p className="text-sm text-muted-foreground">Create your first sub-user to get started.</p>
+      {/* Filter Bar */}
+      <Card className="border border-gray-200 shadow-sm bg-white/80 backdrop-blur-sm">
+        <CardContent className="pt-4 sm:pt-6 p-3 sm:p-6">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 sm:gap-4">
+            <div className="relative flex-1 min-w-0">
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+              <Input
+                placeholder="Search name or email..."
+                className="pl-10 border-gray-200 focus:border-blue-300 focus:ring-blue-200 text-sm"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
+            </div>
+            <div className="flex gap-2 sm:gap-3">
+              <Select value={statusFilter} onValueChange={setStatusFilter}>
+                <SelectTrigger className="w-full sm:w-[160px] lg:w-[180px] border-gray-200 focus:border-blue-300 focus:ring-blue-200 text-sm">
+                  <SelectValue placeholder="All Statuses" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Statuses</SelectItem>
+                  <SelectItem value="active">Active</SelectItem>
+                  <SelectItem value="inactive">Inactive</SelectItem>
+                </SelectContent>
+              </Select>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={() => { setSearchTerm(''); setStatusFilter('all'); }}
+                className="border-gray-200 hover:bg-gray-50 text-sm px-3 sm:px-4"
+              >
+                Clear
+              </Button>
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={fetchSubUsers}
+                className="relative overflow-hidden group"
+              >
+                <RefreshCw className="mr-2 h-4 w-4" />
+                Refresh
+              </Button>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Sub-Users Cards */}
+      {filteredSubUsers.length === 0 ? (
+        <Card className="border border-gray-200 shadow-sm bg-white/80 backdrop-blur-sm">
+          <CardContent className="p-8">
+            <div className="flex flex-col items-center gap-4 text-center">
+              <div className="p-4 bg-gray-100 rounded-full">
+                <Users className="h-8 w-8 text-gray-400" />
+              </div>
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">No sub-users found</h3>
+                <p className="text-gray-600">Try adjusting your search or filters.</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      ) : (
+        <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6">
+          {filteredSubUsers.map((subUser, index) => (
+            <div key={subUser.id} className="group border border-gray-200 shadow-sm hover:shadow-lg transition-all duration-300 bg-white/80 backdrop-blur-sm rounded-lg">
+              <div className="p-4 sm:p-6">
+                {/* Card Header */}
+                <div className="flex items-start justify-between mb-4">
+                  <div className="flex items-center gap-3 flex-1 min-w-0">
+                    <div className="p-2 bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg shadow-sm text-white">
+                      <Users className="h-4 w-4" />
                     </div>
-                  </TableCell>
-                </TableRow>
-              ) : (
-                subUsers.map((subUser) => (
-                  <TableRow key={subUser.id} className="hover:bg-muted/50">
-                    <TableCell className="font-medium">
-                      {subUser.name || 'No name'}
-                    </TableCell>
-                    <TableCell>
-                      {subUser.email}
-                    </TableCell>
-                    <TableCell>
-                      <Badge 
-                        variant={subUser.status === 'active' ? 'default' : 'secondary'}
-                        className={subUser.status === 'active' 
-                          ? 'bg-green-100 text-green-800 border-green-200' 
-                          : 'bg-gray-100 text-gray-800 border-gray-200'
-                        }
-                      >
-                        {subUser.status === 'active' ? 'Active' : 'Inactive'}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
+                    <div className="flex-1 min-w-0">
+                      <h3 className="font-semibold text-gray-900 truncate text-sm sm:text-base">
+                        {subUser.name || 'No name'}
+                      </h3>
+                      <div className="text-xs text-gray-500 truncate">{subUser.email}</div>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-1 flex-shrink-0 ml-2">
+                    <Button 
+                      variant="ghost" 
+                      size="sm" 
+                      className="h-8 w-8 p-0 hover:bg-blue-50"
+                      onClick={() => openEditDialog(subUser)}
+                      title="Edit user"
+                    >
+                      <Edit className="h-4 w-4 text-blue-600" />
+                    </Button>
+                    <Button 
+                      variant="ghost" 
+                      size="sm" 
+                      className="h-8 w-8 p-0 hover:bg-indigo-50"
+                      onClick={() => openPasswordChangeDialog(subUser)}
+                      title="Change password"
+                    >
+                      <Key className="h-4 w-4 text-indigo-600" />
+                    </Button>
+                    <Button 
+                      variant="ghost" 
+                      size="sm" 
+                      className="h-8 w-8 p-0 hover:bg-red-50"
+                      onClick={() => openDeleteDialog(subUser)}
+                      title="Delete user"
+                    >
+                      <Trash2 className="h-4 w-4 text-red-600" />
+                    </Button>
+                  </div>
+                </div>
+
+                {/* Details */}
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-gray-600">Status</span>
+                    <Badge 
+                      variant={subUser.status === 'active' ? 'default' : 'secondary'}
+                      className={subUser.status === 'active' 
+                        ? 'bg-green-100 text-green-800 border-green-200' 
+                        : 'bg-gray-100 text-gray-800 border-gray-200'}
+                    >
+                      {subUser.status === 'active' ? 'Active' : 'Inactive'}
+                    </Badge>
+                  </div>
+
+                  <div>
+                    <span className="block text-sm text-gray-600 mb-1">Permissions</span>
+                    {subUser.permissions && subUser.permissions.length > 0 ? (
                       <div className="flex flex-wrap gap-1">
-                        {subUser.permissions?.slice(0, 3).map((permission) => (
+                        {subUser.permissions.slice(0, 4).map((permission) => (
                           <Badge key={permission} variant="outline" className="text-xs">
                             {availablePermissions.find(p => p.id === permission)?.name || permission}
                           </Badge>
                         ))}
-                        {subUser.permissions?.length > 3 && (
+                        {subUser.permissions.length > 4 && (
                           <Badge variant="outline" className="text-xs">
-                            +{subUser.permissions.length - 3} more
+                            +{subUser.permissions.length - 4} more
                           </Badge>
                         )}
                       </div>
-                    </TableCell>
-                    <TableCell>
-                      {subUser.createdAt ? new Date(subUser.createdAt.seconds * 1000).toLocaleDateString() : '-'}
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-1">
-                        <Button 
-                          variant="ghost" 
-                          size="sm" 
-                          className="h-8 w-8 p-0"
-                          onClick={() => openEditDialog(subUser)}
-                          title="Edit user"
-                        >
-                          <Edit className="h-4 w-4" />
-                        </Button>
-                        <Button 
-                          variant="ghost" 
-                          size="sm" 
-                          className="h-8 w-8 p-0 text-blue-600 hover:text-blue-700"
-                          onClick={() => openPasswordChangeDialog(subUser)}
-                          title="Change password"
-                        >
-                          <Key className="h-4 w-4" />
-                        </Button>
-                        <Button 
-                          variant="ghost" 
-                          size="sm" 
-                          className="h-8 w-8 p-0 text-red-600 hover:text-red-700"
-                          onClick={() => openDeleteDialog(subUser)}
-                          title="Delete user"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
+                    ) : (
+                      <span className="text-xs text-gray-400">No permissions assigned</span>
+                    )}
+                  </div>
+
+                  <div className="flex items-center justify-between text-xs text-gray-500 pt-2 border-t border-gray-100">
+                    <span>Created</span>
+                    <span>{subUser.createdAt ? new Date(subUser.createdAt.seconds * 1000).toLocaleDateString() : '-'}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
 
       {/* Add Sub-User Dialog */}
       <Dialog open={addUserDialogOpen} onOpenChange={setAddUserDialogOpen}>
