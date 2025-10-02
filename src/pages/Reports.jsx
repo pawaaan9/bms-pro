@@ -169,22 +169,63 @@ const anomalies = [
 
 // --- Components ---
 
-const KPICard = ({ title, value, prefix = '', suffix = '', change, period, trend }) => {
+const KPICard = ({ title, value, prefix = '', suffix = '', change, period, trend, index = 0 }) => {
   const trendIcon = trend === 'up' ? TrendingUp : trend === 'down' ? TrendingDown : Minus;
   const trendColor = trend === 'up' ? 'text-green-600' : trend === 'down' ? 'text-red-600' : 'text-gray-500';
   
+  const getCardTheme = (index) => {
+    const themes = [
+      'from-blue-50 to-indigo-50 hover:from-blue-100 hover:to-indigo-100',
+      'from-green-50 to-emerald-50 hover:from-green-100 hover:to-emerald-100',
+      'from-purple-50 to-pink-50 hover:from-purple-100 hover:to-pink-100',
+      'from-orange-50 to-yellow-50 hover:from-orange-100 hover:to-yellow-100',
+      'from-red-50 to-pink-50 hover:from-red-100 hover:to-pink-100',
+      'from-indigo-50 to-blue-50 hover:from-indigo-100 hover:to-blue-100'
+    ];
+    return themes[index % themes.length];
+  };
+
+  const getIconTheme = (index) => {
+    const themes = [
+      'from-blue-500 to-indigo-600',
+      'from-green-500 to-emerald-600',
+      'from-purple-500 to-pink-600',
+      'from-orange-500 to-yellow-600',
+      'from-red-500 to-pink-600',
+      'from-indigo-500 to-blue-600'
+    ];
+    return themes[index % themes.length];
+  };
+
+  const getValueColor = (index) => {
+    const colors = [
+      'text-blue-600',
+      'text-green-600',
+      'text-purple-600',
+      'text-orange-600',
+      'text-red-600',
+      'text-indigo-600'
+    ];
+    return colors[index % colors.length];
+  };
+  
   return (
-    <Card className="relative overflow-hidden">
-      <CardHeader className="pb-2">
-        <CardTitle className="text-sm font-medium text-gray-600">{title}</CardTitle>
-      </CardHeader>
-      <CardContent>
-        <div className="text-2xl font-bold text-gray-900">
-          {prefix}{value.toLocaleString('en-AU')}{suffix}
-        </div>
-        <div className={`flex items-center gap-1 text-sm ${trendColor} mt-1`}>
-          <trendIcon className="h-4 w-4" />
-          <span>{change > 0 ? '+' : ''}{change}{period === 'pp' ? ' pp' : '%'} {period}</span>
+    <Card className={`group border border-gray-200 shadow-sm hover:shadow-lg transition-all duration-300 bg-gradient-to-br ${getCardTheme(index)}`}>
+      <CardContent className="pt-4 p-3">
+        <div className="flex items-center justify-between">
+          <div className="flex-1 min-w-0">
+            <p className="text-xs font-medium text-gray-600 truncate">{title}</p>
+            <p className={`text-lg font-bold ${getValueColor(index)} mt-1`}>
+              {prefix}{value.toLocaleString('en-AU')}{suffix}
+            </p>
+            <div className={`flex items-center gap-1 text-xs ${trendColor} mt-1`}>
+              <trendIcon className="h-3 w-3" />
+              <span>{change > 0 ? '+' : ''}{change}{period === 'pp' ? ' pp' : '%'} {period}</span>
+            </div>
+          </div>
+          <div className={`p-2 bg-gradient-to-r ${getIconTheme(index)} rounded-lg shadow-lg flex-shrink-0 ml-2`}>
+            <trendIcon className="h-4 w-4 text-white" />
+          </div>
         </div>
         <div className="sr-only">
           {title}: {prefix}{value.toLocaleString('en-AU')}{suffix}, 
@@ -716,45 +757,86 @@ export default function Reports() {
 
   return (
     <TooltipProvider>
-      <div className="space-y-8 p-6">
+      <div className="space-y-4 sm:space-y-6 p-4 sm:p-6">
         {/* Header */}
-        <header className="flex flex-wrap items-center justify-between gap-4">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900">Reports</h1>
-            <p className="mt-1 text-gray-600">
-              Performance, forecasts and insights.
-              {lastUpdated && (
-                <span className="ml-2 text-sm text-gray-500">
-                  Last updated: {format(lastUpdated, 'dd MMM yyyy HH:mm')}
-                </span>
-              )}
-            </p>
-          </div>
-          <div className="flex gap-2">
-            <Button 
-              variant="outline" 
-              onClick={fetchReportsData}
-              disabled={loading}
-            >
-              {loading ? (
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              ) : (
-                <RefreshCw className="mr-2 h-4 w-4" />
-              )}
-              Refresh
-            </Button>
-            <Button variant="outline" onClick={exportPDF} disabled={loading}>
-              <FileText className="mr-2 h-4 w-4" />
-              Export PDF
-            </Button>
-            <Button variant="outline" onClick={exportCSVs} disabled={loading}>
-              <Download className="mr-2 h-4 w-4" />
-              Download CSVs
-            </Button>
-            <Button onClick={() => setShowScheduleDialog(true)} disabled={loading}>
-              <Mail className="mr-2 h-4 w-4" />
-              Schedule Email
-            </Button>
+        <header className="relative overflow-hidden bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 rounded-xl sm:rounded-2xl p-4 sm:p-6 lg:p-8 border border-blue-100">
+          <div className="absolute inset-0 bg-gradient-to-r from-blue-600/5 to-purple-600/5"></div>
+          <div className="relative flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3 sm:gap-4 lg:gap-6">
+            <div className="space-y-2 sm:space-y-3 flex-1">
+              <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 lg:gap-4">
+                <div className="p-2 sm:p-3 bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg sm:rounded-xl shadow-lg w-fit">
+                  <TrendingUp className="h-5 w-5 sm:h-6 sm:w-6 lg:h-8 lg:w-8 text-white" />
+                </div>
+                <div className="flex-1">
+                  <h1 className="text-xl sm:text-2xl lg:text-3xl xl:text-4xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+                    Reports
+                  </h1>
+                  <p className="text-gray-600 font-medium text-xs sm:text-sm lg:text-base mt-1">
+                    Performance, forecasts and insights for your business
+                    {lastUpdated && (
+                      <span className="ml-2 text-xs text-gray-500">
+                        Last updated: {format(lastUpdated, 'dd MMM yyyy HH:mm')}
+                      </span>
+                    )}
+                  </p>
+                </div>
+              </div>
+              <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2 lg:gap-4 text-xs sm:text-sm text-gray-500">
+                <div className="flex items-center gap-1 sm:gap-2">
+                  <TrendingUp className="h-3 w-3 sm:h-4 sm:w-4 text-blue-500" />
+                  <span>Performance Analytics</span>
+                </div>
+                <div className="flex items-center gap-1 sm:gap-2">
+                  <Calendar className="h-3 w-3 sm:h-4 sm:w-4 text-green-500" />
+                  <span>Forecasting & Insights</span>
+                </div>
+              </div>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={fetchReportsData}
+                disabled={loading}
+                className="bg-white/80 backdrop-blur-sm border-blue-200 hover:bg-blue-50 hover:border-blue-300"
+              >
+                {loading ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : (
+                  <RefreshCw className="mr-2 h-4 w-4" />
+                )}
+                <span className="hidden sm:inline">Refresh</span>
+              </Button>
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={exportPDF} 
+                disabled={loading}
+                className="bg-white/80 backdrop-blur-sm border-blue-200 hover:bg-blue-50 hover:border-blue-300"
+              >
+                <FileText className="mr-2 h-4 w-4" />
+                <span className="hidden sm:inline">Export PDF</span>
+              </Button>
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={exportCSVs} 
+                disabled={loading}
+                className="bg-white/80 backdrop-blur-sm border-blue-200 hover:bg-blue-50 hover:border-blue-300"
+              >
+                <Download className="mr-2 h-4 w-4" />
+                <span className="hidden sm:inline">Download CSVs</span>
+              </Button>
+              <Button 
+                size="sm"
+                onClick={() => setShowScheduleDialog(true)} 
+                disabled={loading}
+                className="bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 shadow-lg hover:shadow-xl transition-all duration-300"
+              >
+                <Mail className="mr-2 h-4 w-4" />
+                <span className="hidden sm:inline">Schedule Email</span>
+              </Button>
+            </div>
           </div>
         </header>
 
@@ -780,13 +862,14 @@ export default function Reports() {
         )}
 
         {/* Top Filters */}
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex flex-wrap items-center gap-4">
+        <Card className="border border-gray-200 shadow-sm bg-white/80 backdrop-blur-sm">
+          <CardContent className="pt-4 sm:pt-6 p-3 sm:p-6">
+            <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4">
               <div className="flex items-center gap-2">
-                <Label>Date Range:</Label>
+                <Filter className="h-4 w-4 text-gray-500" />
+                <Label className="text-sm font-medium">Date Range:</Label>
                 <Select value={dateRange} onValueChange={setDateRange} disabled={loading}>
-                  <SelectTrigger className="w-40">
+                  <SelectTrigger className="w-32 sm:w-40 border-gray-200 focus:border-blue-300 focus:ring-blue-200">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -799,39 +882,44 @@ export default function Reports() {
               </div>
               
               <div className="flex items-center gap-2">
-                <Label>Segments:</Label>
-                <Button
-                  variant={selectedSegments.includes('All') ? 'default' : 'outline'}
-                  size="sm"
-                  onClick={() => setSelectedSegments(['All'])}
-                  aria-pressed={selectedSegments.includes('All')}
-                >
-                  All
-                </Button>
-                <Button
-                  variant={selectedSegments.includes('Community/NFP') ? 'default' : 'outline'}
-                  size="sm"
-                  onClick={() => setSelectedSegments(
-                    selectedSegments.includes('Community/NFP') 
-                      ? selectedSegments.filter(s => s !== 'Community/NFP')
-                      : [...selectedSegments.filter(s => s !== 'All'), 'Community/NFP']
-                  )}
-                  aria-pressed={selectedSegments.includes('Community/NFP')}
-                >
-                  Community/NFP
-                </Button>
-                <Button
-                  variant={selectedSegments.includes('VIP') ? 'default' : 'outline'}
-                  size="sm"
-                  onClick={() => setSelectedSegments(
-                    selectedSegments.includes('VIP')
-                      ? selectedSegments.filter(s => s !== 'VIP')
-                      : [...selectedSegments.filter(s => s !== 'All'), 'VIP']
-                  )}
-                  aria-pressed={selectedSegments.includes('VIP')}
-                >
-                  VIP
-                </Button>
+                <Label className="text-sm font-medium">Segments:</Label>
+                <div className="flex gap-1">
+                  <Button
+                    variant={selectedSegments.includes('All') ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => setSelectedSegments(['All'])}
+                    aria-pressed={selectedSegments.includes('All')}
+                    className="text-xs"
+                  >
+                    All
+                  </Button>
+                  <Button
+                    variant={selectedSegments.includes('Community/NFP') ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => setSelectedSegments(
+                      selectedSegments.includes('Community/NFP') 
+                        ? selectedSegments.filter(s => s !== 'Community/NFP')
+                        : [...selectedSegments.filter(s => s !== 'All'), 'Community/NFP']
+                    )}
+                    aria-pressed={selectedSegments.includes('Community/NFP')}
+                    className="text-xs"
+                  >
+                    Community/NFP
+                  </Button>
+                  <Button
+                    variant={selectedSegments.includes('VIP') ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => setSelectedSegments(
+                      selectedSegments.includes('VIP')
+                        ? selectedSegments.filter(s => s !== 'VIP')
+                        : [...selectedSegments.filter(s => s !== 'All'), 'VIP']
+                    )}
+                    aria-pressed={selectedSegments.includes('VIP')}
+                    className="text-xs"
+                  >
+                    VIP
+                  </Button>
+                </div>
               </div>
             </div>
           </CardContent>
@@ -839,29 +927,28 @@ export default function Reports() {
 
         {/* Executive KPIs */}
         <section aria-labelledby="kpi-heading">
-          <h2 id="kpi-heading" className="text-xl font-semibold mb-4">Executive KPIs</h2>
+          <h2 id="kpi-heading" className="text-lg sm:text-xl font-semibold mb-3 sm:mb-4 text-gray-800">Executive KPIs</h2>
           {loading ? (
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+            <div className="grid grid-cols-1 gap-3 sm:gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
               {Array.from({ length: 6 }).map((_, i) => (
                 <Card key={i} className="animate-pulse">
-                  <CardHeader className="pb-2">
-                    <div className="h-4 bg-gray-200 rounded w-3/4"></div>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="h-8 bg-gray-200 rounded w-1/2 mb-2"></div>
-                    <div className="h-4 bg-gray-200 rounded w-2/3"></div>
+                  <CardContent className="pt-4 p-3">
+                    <div className="h-3 bg-gray-200 rounded w-3/4 mb-2"></div>
+                    <div className="h-6 bg-gray-200 rounded w-1/2 mb-2"></div>
+                    <div className="h-3 bg-gray-200 rounded w-2/3"></div>
                   </CardContent>
                 </Card>
               ))}
             </div>
           ) : reportsData.executiveKPIs?.kpis ? (
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+            <div className="grid grid-cols-1 gap-3 sm:gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
               <KPICard 
                 title={`Bookings (${dateRange.toLowerCase()})`}
                 value={reportsData.executiveKPIs.kpis.bookings.value}
                 change={reportsData.executiveKPIs.kpis.bookings.change}
                 period={reportsData.executiveKPIs.kpis.bookings.period}
                 trend={reportsData.executiveKPIs.kpis.bookings.trend}
+                index={0}
               />
               <KPICard 
                 title={`Revenue (${dateRange.toLowerCase()})`}
@@ -871,6 +958,7 @@ export default function Reports() {
                 change={reportsData.executiveKPIs.kpis.revenue.change}
                 period={reportsData.executiveKPIs.kpis.revenue.period}
                 trend={reportsData.executiveKPIs.kpis.revenue.trend}
+                index={1}
               />
               <KPICard 
                 title={`Utilisation (${dateRange.toLowerCase()})`}
@@ -879,6 +967,7 @@ export default function Reports() {
                 change={reportsData.executiveKPIs.kpis.utilisation.change}
                 period={reportsData.executiveKPIs.kpis.utilisation.period}
                 trend={reportsData.executiveKPIs.kpis.utilisation.trend}
+                index={2}
               />
               <KPICard 
                 title="Deposit Conversion" 
@@ -887,6 +976,7 @@ export default function Reports() {
                 change={reportsData.executiveKPIs.kpis.depositConversion.change}
                 period={reportsData.executiveKPIs.kpis.depositConversion.period}
                 trend={reportsData.executiveKPIs.kpis.depositConversion.trend}
+                index={3}
               />
               <KPICard 
                 title="On-time Payments" 
@@ -895,6 +985,7 @@ export default function Reports() {
                 change={reportsData.executiveKPIs.kpis.onTimePayments.change}
                 period={reportsData.executiveKPIs.kpis.onTimePayments.period}
                 trend={reportsData.executiveKPIs.kpis.onTimePayments.trend}
+                index={4}
               />
               <KPICard 
                 title="Cancellation Rate" 
@@ -903,22 +994,41 @@ export default function Reports() {
                 change={reportsData.executiveKPIs.kpis.cancellationRate.change}
                 period={reportsData.executiveKPIs.kpis.cancellationRate.period}
                 trend={reportsData.executiveKPIs.kpis.cancellationRate.trend}
+                index={5}
               />
             </div>
           ) : (
-            <Card>
-              <CardContent className="pt-6">
-                <p className="text-gray-500 text-center">No KPI data available</p>
+            <Card className="border border-gray-200 shadow-sm bg-white/80 backdrop-blur-sm">
+              <CardContent className="pt-6 p-6">
+                <div className="flex flex-col items-center gap-4 text-center">
+                  <div className="p-4 bg-gray-100 rounded-full">
+                    <TrendingUp className="h-8 w-8 text-gray-400" />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-semibold text-gray-900 mb-2">No KPI data available</h3>
+                    <p className="text-gray-600 mb-4">Please refresh the reports to load the latest data.</p>
+                    <Button 
+                      onClick={fetchReportsData}
+                      className="bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700"
+                    >
+                      <RefreshCw className="h-4 w-4 mr-2" />
+                      Refresh Data
+                    </Button>
+                  </div>
+                </div>
               </CardContent>
             </Card>
           )}
         </section>
 
         {/* Historical & Pipeline Tables */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Historical Performance</CardTitle>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
+          <Card className="border border-gray-200 shadow-sm bg-white/80 backdrop-blur-sm">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base sm:text-lg font-semibold text-gray-800 flex items-center gap-2">
+                <Calendar className="h-4 w-4 sm:h-5 sm:w-5 text-blue-500" />
+                Historical Performance
+              </CardTitle>
             </CardHeader>
             <CardContent>
               {loading ? (
@@ -942,14 +1052,25 @@ export default function Reports() {
                   caption="Historical performance data"
                 />
               ) : (
-                <p className="text-gray-500 text-center">No historical data available</p>
+                <div className="flex flex-col items-center gap-4 text-center py-8">
+                  <div className="p-4 bg-gray-100 rounded-full">
+                    <Calendar className="h-8 w-8 text-gray-400" />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-semibold text-gray-900 mb-2">No historical data available</h3>
+                    <p className="text-gray-600">Historical performance data will appear here once available.</p>
+                  </div>
+                </div>
               )}
             </CardContent>
           </Card>
           
-          <Card>
-            <CardHeader>
-              <CardTitle>Upcoming Pipeline</CardTitle>
+          <Card className="border border-gray-200 shadow-sm bg-white/80 backdrop-blur-sm">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base sm:text-lg font-semibold text-gray-800 flex items-center gap-2">
+                <TrendingUp className="h-4 w-4 sm:h-5 sm:w-5 text-green-500" />
+                Upcoming Pipeline
+              </CardTitle>
             </CardHeader>
             <CardContent>
               {loading ? (
@@ -973,20 +1094,31 @@ export default function Reports() {
                   caption="Pipeline projections for upcoming months"
                 />
               ) : (
-                <p className="text-gray-500 text-center">No pipeline data available</p>
+                <div className="flex flex-col items-center gap-4 text-center py-8">
+                  <div className="p-4 bg-gray-100 rounded-full">
+                    <TrendingUp className="h-8 w-8 text-gray-400" />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-semibold text-gray-900 mb-2">No pipeline data available</h3>
+                    <p className="text-gray-600">Pipeline projection data will appear here once available.</p>
+                  </div>
+                </div>
               )}
             </CardContent>
           </Card>
         </div>
 
         {/* Forecast */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Forecast (Linear Regression)</CardTitle>
+        <Card className="border border-gray-200 shadow-sm bg-white/80 backdrop-blur-sm">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base sm:text-lg font-semibold text-gray-800 flex items-center gap-2">
+              <TrendingUp className="h-4 w-4 sm:h-5 sm:w-5 text-blue-500" />
+              Forecast (Linear Regression)
+            </CardTitle>
           </CardHeader>
           <CardContent>
             {loading ? (
-              <div className="h-64 flex items-center justify-center">
+              <div className="h-48 sm:h-64 flex items-center justify-center">
                 <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
               </div>
             ) : reportsData.forecastData ? (
@@ -1014,7 +1146,7 @@ export default function Reports() {
                   </Tooltip>
                 </div>
                 
-                <div className="h-64">
+                <div className="h-48 sm:h-64">
                   <ResponsiveContainer width="100%" height="100%">
                     <AreaChart data={reportsData.forecastData.scenarios[forecastScenario.toLowerCase()] || reportsData.forecastData.forecastData}>
                       <CartesianGrid strokeDasharray="3 3" />
@@ -1033,17 +1165,26 @@ export default function Reports() {
                 </div>
               </div>
             ) : (
-              <div className="h-64 flex items-center justify-center">
-                <p className="text-gray-500">No forecast data available</p>
+              <div className="flex flex-col items-center gap-4 text-center py-8">
+                <div className="p-4 bg-gray-100 rounded-full">
+                  <TrendingUp className="h-8 w-8 text-gray-400" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900 mb-2">No forecast data available</h3>
+                  <p className="text-gray-600">Forecast data will appear here once historical data is available.</p>
+                </div>
               </div>
             )}
           </CardContent>
         </Card>
 
         {/* Resource Utilisation */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Resource Utilisation</CardTitle>
+        <Card className="border border-gray-200 shadow-sm bg-white/80 backdrop-blur-sm">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base sm:text-lg font-semibold text-gray-800 flex items-center gap-2">
+              <TrendingUp className="h-4 w-4 sm:h-5 sm:w-5 text-purple-500" />
+              Resource Utilisation
+            </CardTitle>
           </CardHeader>
           <CardContent>
             <UtilisationHeatmap />

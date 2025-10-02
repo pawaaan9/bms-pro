@@ -10,7 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Plus, Edit, Trash2, Eye, Save, X, AlertCircle, CheckCircle, Copy } from "lucide-react";
+import { Plus, Edit, Trash2, Eye, Save, X, AlertCircle, CheckCircle, Copy, Mail } from "lucide-react";
 import ToastNotification from "@/components/ui/ToastNotification";
 
 export default function CommsTemplates() {
@@ -203,25 +203,41 @@ export default function CommsTemplates() {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900">Email Templates</h1>
-          <p className="text-gray-600 mt-2">
-            Create and manage reusable email templates with personalization variables.
-          </p>
+    <div className="space-y-4 sm:space-y-6 p-4 sm:p-6">
+      {/* Header */}
+      <header className="relative overflow-hidden bg-gradient-to-br from-purple-50 via-pink-50 to-rose-50 rounded-xl sm:rounded-2xl p-4 sm:p-6 lg:p-8 border border-purple-100">
+        <div className="absolute inset-0 bg-gradient-to-r from-purple-600/5 to-pink-600/5"></div>
+        <div className="relative flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
+          <div className="flex items-center gap-3 sm:gap-4">
+            <div className="p-2 sm:p-3 bg-gradient-to-r from-purple-500 to-pink-600 rounded-lg sm:rounded-xl shadow-lg w-fit">
+              <Mail className="h-5 w-5 sm:h-6 sm:w-6 lg:h-8 lg:w-8 text-white" />
+            </div>
+            <div className="flex-1">
+              <h1 className="text-xl sm:text-2xl lg:text-3xl xl:text-4xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
+                Email Templates
+              </h1>
+              <p className="text-gray-600 font-medium text-xs sm:text-sm lg:text-base mt-1">
+                Create and manage reusable email templates with personalization variables.
+              </p>
+            </div>
+          </div>
+          <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
+            <DialogTrigger asChild>
+              <Button className="bg-gradient-to-r from-purple-500 to-pink-600 hover:from-purple-600 hover:to-pink-700 shadow-lg hover:shadow-xl transition-all duration-300 w-full sm:w-auto">
+                <Plus className="w-4 h-4 mr-2" />
+                New Template
+              </Button>
+            </DialogTrigger>
+          </Dialog>
         </div>
-        <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
-          <DialogTrigger asChild>
-            <Button>
-              <Plus className="w-4 h-4 mr-2" />
-              New Template
-            </Button>
-          </DialogTrigger>
+      </header>
+
+      {/* Create Template Dialog */}
+      <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
           <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
-              <DialogTitle>Create Email Template</DialogTitle>
-              <DialogDescription>
+              <DialogTitle className="text-lg sm:text-xl font-semibold text-gray-800">Create Email Template</DialogTitle>
+              <DialogDescription className="text-xs sm:text-sm">
                 Create a new email template with personalization variables.
               </DialogDescription>
             </DialogHeader>
@@ -310,14 +326,13 @@ export default function CommsTemplates() {
               <Button variant="outline" onClick={() => setIsCreateDialogOpen(false)}>
                 Cancel
               </Button>
-              <Button onClick={handleCreate}>
+              <Button onClick={handleCreate} className="bg-gradient-to-r from-purple-500 to-pink-600 hover:from-purple-600 hover:to-pink-700">
                 <Save className="w-4 h-4 mr-2" />
                 Create Template
               </Button>
             </div>
           </DialogContent>
         </Dialog>
-      </div>
 
       {error && (
         <Alert variant="destructive">
@@ -327,23 +342,23 @@ export default function CommsTemplates() {
       )}
 
       {templates.length === 0 ? (
-        <Card>
+        <Card className="border border-gray-200 shadow-sm bg-white/80 backdrop-blur-sm">
           <CardContent className="text-center py-12">
-            <div className="text-gray-500 mb-4">
-              <Plus className="w-12 h-12 mx-auto mb-4 opacity-50" />
-              <h3 className="text-lg font-medium mb-2">No templates yet</h3>
-              <p>Create your first email template to get started.</p>
+            <div className="p-4 bg-gray-100 rounded-full w-fit mx-auto mb-4">
+              <Plus className="w-12 h-12 text-gray-400" />
             </div>
-            <Button onClick={() => setIsCreateDialogOpen(true)}>
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">No templates yet</h3>
+            <p className="text-gray-600 mb-4">Create your first email template to get started.</p>
+            <Button onClick={() => setIsCreateDialogOpen(true)} className="bg-gradient-to-r from-purple-500 to-pink-600 hover:from-purple-600 hover:to-pink-700 shadow-lg hover:shadow-xl transition-all duration-300">
               <Plus className="w-4 h-4 mr-2" />
               Create Template
             </Button>
           </CardContent>
         </Card>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
           {templates.map((template) => (
-            <Card key={template.id} className="hover:shadow-lg transition-shadow">
+            <Card key={template.id} className="border border-gray-200 shadow-sm bg-white/80 backdrop-blur-sm hover:shadow-lg transition-all duration-300">
               <CardHeader>
                 <div className="flex justify-between items-start">
                   <div>
@@ -512,7 +527,7 @@ export default function CommsTemplates() {
             <Button variant="outline" onClick={() => setIsEditDialogOpen(false)}>
               Cancel
             </Button>
-            <Button onClick={handleEdit}>
+            <Button onClick={handleEdit} className="bg-gradient-to-r from-purple-500 to-pink-600 hover:from-purple-600 hover:to-pink-700">
               <Save className="w-4 h-4 mr-2" />
               Update Template
             </Button>

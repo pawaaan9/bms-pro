@@ -23,7 +23,8 @@ import {
   MapPin,
   CheckCircle,
   AlertCircle,
-  Loader2
+  Loader2,
+  Eye
 } from "lucide-react";
 import ToastNotification from "@/components/ui/ToastNotification";
 
@@ -209,23 +210,36 @@ export default function CommsSendEmail() {
   );
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold text-gray-900">Send Email</h1>
-        <p className="text-gray-600 mt-2">
-          Send customized emails to customers using templates or custom content.
-        </p>
-      </div>
+    <div className="space-y-4 sm:space-y-6 p-4 sm:p-6">
+      {/* Header */}
+      <header className="relative overflow-hidden bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 rounded-xl sm:rounded-2xl p-4 sm:p-6 lg:p-8 border border-blue-100">
+        <div className="absolute inset-0 bg-gradient-to-r from-blue-600/5 to-purple-600/5"></div>
+        <div className="relative flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4">
+          <div className="p-2 sm:p-3 bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg sm:rounded-xl shadow-lg w-fit">
+            <Send className="h-5 w-5 sm:h-6 sm:w-6 lg:h-8 lg:w-8 text-white" />
+          </div>
+          <div className="flex-1">
+            <h1 className="text-xl sm:text-2xl lg:text-3xl xl:text-4xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+              Send Email
+            </h1>
+            <p className="text-gray-600 font-medium text-xs sm:text-sm lg:text-base mt-1">
+              Send customized emails to customers using templates or custom content.
+            </p>
+          </div>
+        </div>
+      </header>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
         {/* Customer Selection */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <User className="w-5 h-5" />
+        <Card className="border border-gray-200 shadow-sm bg-white/80 backdrop-blur-sm hover:shadow-lg transition-all duration-300">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base sm:text-lg font-semibold text-gray-800 flex items-center gap-2">
+              <div className="p-2 bg-gradient-to-r from-blue-500 to-indigo-600 rounded-lg">
+                <User className="w-4 h-4 text-white" />
+              </div>
               Select Customer
             </CardTitle>
-            <CardDescription>
+            <CardDescription className="text-xs sm:text-sm">
               Choose a customer to send the email to
             </CardDescription>
           </CardHeader>
@@ -278,13 +292,15 @@ export default function CommsSendEmail() {
         </Card>
 
         {/* Booking Selection */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Calendar className="w-5 h-5" />
+        <Card className="border border-gray-200 shadow-sm bg-white/80 backdrop-blur-sm hover:shadow-lg transition-all duration-300">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base sm:text-lg font-semibold text-gray-800 flex items-center gap-2">
+              <div className="p-2 bg-gradient-to-r from-green-500 to-emerald-600 rounded-lg">
+                <Calendar className="w-4 h-4 text-white" />
+              </div>
               Select Booking
             </CardTitle>
-            <CardDescription>
+            <CardDescription className="text-xs sm:text-sm">
               Choose a specific booking (optional)
             </CardDescription>
           </CardHeader>
@@ -331,13 +347,15 @@ export default function CommsSendEmail() {
         </Card>
 
         {/* Email Content */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Mail className="w-5 h-5" />
+        <Card className="border border-gray-200 shadow-sm bg-white/80 backdrop-blur-sm hover:shadow-lg transition-all duration-300">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base sm:text-lg font-semibold text-gray-800 flex items-center gap-2">
+              <div className="p-2 bg-gradient-to-r from-purple-500 to-pink-600 rounded-lg">
+                <Mail className="w-4 h-4 text-white" />
+              </div>
               Email Content
             </CardTitle>
-            <CardDescription>
+            <CardDescription className="text-xs sm:text-sm">
               Choose template or write custom content
             </CardDescription>
           </CardHeader>
@@ -383,7 +401,7 @@ export default function CommsSendEmail() {
             <Button 
               onClick={handleSendEmail} 
               disabled={sending || !emailData.recipientEmail}
-              className="w-full"
+              className="w-full bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 shadow-lg hover:shadow-xl transition-all duration-300"
             >
               {sending ? (
                 <>
@@ -403,10 +421,13 @@ export default function CommsSendEmail() {
 
       {/* Email Preview */}
       {(emailData.customSubject || emailData.customBody) && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Email Preview</CardTitle>
-            <CardDescription>
+        <Card className="border border-gray-200 shadow-sm bg-white/80 backdrop-blur-sm">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base sm:text-lg font-semibold text-gray-800 flex items-center gap-2">
+              <Eye className="h-4 w-4 sm:h-5 sm:w-5 text-blue-500" />
+              Email Preview
+            </CardTitle>
+            <CardDescription className="text-xs sm:text-sm">
               Preview of the email that will be sent
             </CardDescription>
           </CardHeader>
