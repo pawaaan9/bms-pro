@@ -7,7 +7,7 @@ import { Input } from '../components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 import { Separator } from '../components/ui/separator';
 import { Alert, AlertDescription } from '../components/ui/alert';
-import { Loader2, CheckCircle, AlertCircle, Eye, EyeOff } from 'lucide-react';
+import { Loader2, CheckCircle, AlertCircle, Eye, EyeOff, Settings2 } from 'lucide-react';
 import { 
   getUserSettings, 
   updateUserSettings, 
@@ -279,12 +279,26 @@ export default function SettingsGeneral() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold">General Settings</h1>
-        <p className="text-muted-foreground">
-          Configure your timezone, date/time format, and currency preferences.
-        </p>
-      </div>
+      <section className="relative overflow-hidden bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 rounded-xl sm:rounded-2xl p-4 sm:p-6 lg:p-8 border border-blue-100">
+        <div className="absolute inset-0 bg-gradient-to-r from-blue-600/5 to-purple-600/5"></div>
+        <div className="relative flex items-center justify-between gap-3 sm:gap-4 lg:gap-6">
+          <div className="space-y-2 sm:space-y-3 flex-1">
+            <div className="flex items-center gap-2 sm:gap-3 lg:gap-4">
+              <div className="p-2 sm:p-3 bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg sm:rounded-xl shadow-lg w-fit">
+                <Settings2 className="h-5 w-5 sm:h-6 sm:w-6 lg:h-8 lg:w-8 text-white" />
+              </div>
+              <div className="flex-1">
+                <h1 className="text-xl sm:text-2xl lg:text-3xl xl:text-4xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+                  General Settings
+                </h1>
+                <p className="text-gray-600 font-medium text-xs sm:text-sm lg:text-base mt-1">
+                  Preferences for timezone, date/time, currency, and account security
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
 
       {message.text && (
         <Alert variant={message.type === 'error' ? 'destructive' : 'default'}>
