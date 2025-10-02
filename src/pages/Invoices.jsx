@@ -70,6 +70,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '@/contexts/AuthContext';
 import { fetchInvoices, fetchPayments, createInvoice, updateInvoiceStatus, recordPayment, calculateInvoiceSummary, generateInvoiceFromBooking, downloadInvoicePDF } from '@/services/invoiceService';
 import { fetchBookingsForCalendar } from '@/services/bookingService';
+import { exportToCSV } from '@/utils/exportUtils';
 
 
 // Smart filter chips component with beautiful animations
@@ -296,7 +297,12 @@ const InvoicesTable = ({
                 <Mail className="mr-2 h-4 w-4" />
                 Send Reminders
               </Button>
-              <Button size="sm" variant="outline">
+              <Button 
+                size="sm" 
+                variant="outline"
+                onClick={handleExportCSV}
+                disabled={filteredInvoices.length === 0}
+              >
                 <Download className="mr-2 h-4 w-4" />
                 Export CSV
               </Button>
@@ -1090,6 +1096,58 @@ export default function Invoices() {
     }
   }, [selectedInvoice, newPaymentData, token, user]);
 
+  // Handle CSV export
+  const handleExportCSV = useCallback(() => {
+    try {
+      if (filteredInvoices.length === 0) {
+        alert('No invoices to export. Please adjust your filters or create some invoices first.');
+        return;
+      }
+
+      // Prepare data for CSV export
+      const csvData = filteredInvoices.map(invoice => ({
+        'Invoice ID': invoice.id,
+        'Type': invoice.type,
+        'Customer Name': invoice.customer.name,
+        'Customer Email': invoice.customer.email,
+        'Customer ABN': invoice.customer.abn || '',
+        'Booking ID': invoice.booking,
+        'Resource': invoice.resource,
+        'Issue Date': format(invoice.issueDate, 'dd/MM/yyyy'),
+        'Due Date': format(invoice.dueDate, 'dd/MM/yyyy'),
+        'Subtotal': invoice.subtotal.toFixed(2),
+        'GST': invoice.gst.toFixed(2),
+        'Total Amount': invoice.total.toFixed(2),
+        'Paid Amount': invoice.paidAmount.toFixed(2),
+        'Balance Due': (invoice.total - invoice.paidAmount).toFixed(2),
+        'Status': invoice.status,
+        'Deposit Paid': invoice.depositPaid ? invoice.depositPaid.toFixed(2) : '0.00',
+        'Final Total': invoice.finalTotal ? invoice.finalTotal.toFixed(2) : invoice.total.toFixed(2),
+        'Booking Source': invoice.bookingSource || 'Direct',
+        'Quotation ID': invoice.quotationId || '',
+        'Priority': invoice.priority || 'normal',
+        'Created At': invoice.createdAt ? format(new Date(invoice.createdAt), 'dd/MM/yyyy HH:mm') : '',
+        'Sent At': invoice.sentAt ? format(new Date(invoice.sentAt), 'dd/MM/yyyy HH:mm') : ''
+      }));
+
+      // Define CSV headers
+      const headers = [
+        'Invoice ID', 'Type', 'Customer Name', 'Customer Email', 'Customer ABN',
+        'Booking ID', 'Resource', 'Issue Date', 'Due Date', 'Subtotal', 'GST',
+        'Total Amount', 'Paid Amount', 'Balance Due', 'Status', 'Deposit Paid',
+        'Final Total', 'Booking Source', 'Quotation ID', 'Priority', 'Created At', 'Sent At'
+      ];
+
+      // Export to CSV
+      exportToCSV(csvData, 'invoices_export', headers);
+      
+      console.log(`Exported ${csvData.length} invoices to CSV`);
+    } catch (err) {
+      console.error('Error exporting invoices to CSV:', err);
+      alert('Failed to export invoices. Please try again.');
+    }
+  }, [filteredInvoices]);
+
   // Handle invoice actions
   const handleInvoiceAction = useCallback(async (action, invoiceId) => {
     try {
@@ -1215,7 +1273,12 @@ export default function Invoices() {
                 <Mail className="mr-2 h-4 w-4" />
                 Send Reminders
               </Button>
-              <Button variant="secondary" className="bg-white/10 backdrop-blur border-white/20 text-white hover:bg-white/20">
+              <Button 
+                variant="secondary" 
+                className="bg-white/10 backdrop-blur border-white/20 text-white hover:bg-white/20"
+                onClick={handleExportCSV}
+                disabled={filteredInvoices.length === 0}
+              >
                 <Download className="mr-2 h-4 w-4" />
                 Export CSV
               </Button>
