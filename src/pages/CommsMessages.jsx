@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { emailCommsAPI } from "@/services/emailService";
 import { Button } from "@/components/ui/button";
@@ -395,8 +396,8 @@ export default function CommsMessages() {
       </Tabs>
 
       {/* Email Detail Modal */}
-      {selectedEmail && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+      {selectedEmail && createPortal(
+        (<div className="fixed top-0 left-0 right-0 bottom-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4" style={{zIndex: 9999}}>
           <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full mx-4 max-h-[90vh] overflow-hidden flex flex-col">
             {/* Modal Header */}
             <div className="bg-gradient-to-br from-green-50 via-emerald-50 to-teal-50 p-6 border-b border-green-100 flex-shrink-0" style={{backdropFilter: 'none', filter: 'none'}}>
@@ -471,12 +472,13 @@ export default function CommsMessages() {
               </div>
             </div>
           </div>
-        </div>
+        </div>),
+        document.body
       )}
 
       {/* Confirmation Dialog */}
-      {showConfirmDialog && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      {showConfirmDialog && createPortal(
+        (<div className="fixed top-0 left-0 right-0 bottom-0 bg-black/60 backdrop-blur-sm flex items-center justify-center" style={{zIndex: 9999}}>
           <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
             <div className="flex items-center gap-3 mb-4">
               <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
@@ -530,7 +532,8 @@ export default function CommsMessages() {
               </Button>
             </div>
           </div>
-        </div>
+        </div>),
+        document.body
       )}
 
       {/* Toast Notification */}
