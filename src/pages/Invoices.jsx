@@ -68,7 +68,7 @@ import { Label } from '@/components/ui/label';
 import { format, addDays, subDays, isAfter, isBefore } from 'date-fns';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '@/contexts/AuthContext';
-import { fetchInvoices, fetchPayments, createInvoice, updateInvoiceStatus, recordPayment, calculateInvoiceSummary, generateInvoiceFromBooking, downloadInvoicePDF } from '@/services/invoiceService';
+import { fetchInvoices, fetchPayments, createInvoice, updateInvoiceStatus, recordPayment, calculateInvoiceSummary, generateInvoiceFromBooking, downloadInvoicePDF, sendInvoiceReminders } from '@/services/invoiceService';
 import { fetchBookingsForCalendar } from '@/services/bookingService';
 import { exportToCSV } from '@/utils/exportUtils';
 
@@ -293,7 +293,11 @@ const InvoicesTable = ({
                 <Send className="mr-2 h-4 w-4" />
                 Send Selected
               </Button>
-              <Button size="sm" variant="outline">
+              <Button 
+                size="sm" 
+                variant="outline"
+                onClick={handleSendReminders}
+              >
                 <Mail className="mr-2 h-4 w-4" />
                 Send Reminders
               </Button>
@@ -853,6 +857,9 @@ export default function Invoices() {
   // Dialog states
   const [showCreateInvoiceDialog, setShowCreateInvoiceDialog] = useState(false);
   const [showPaymentDialog, setShowPaymentDialog] = useState(false);
+  const [showReminderDialog, setShowReminderDialog] = useState(false);
+  const [reminderInvoices, setReminderInvoices] = useState([]);
+  const [isSendingReminders, setIsSendingReminders] = useState(false);
   const [selectedBooking, setSelectedBooking] = useState(null);
   const [bookingSearchTerm, setBookingSearchTerm] = useState('');
   const [newInvoiceData, setNewInvoiceData] = useState({
@@ -1176,6 +1183,67 @@ export default function Invoices() {
     }
   }, [invoicesData, token, user]);
 
+  // Handle sending reminders for selected invoices or all eligible invoices
+  const handleSendReminders = useCallback(() => {
+    let eligibleInvoices;
+    
+    if (selectedRows.size > 0) {
+      // Send reminders for selected invoices
+      const selectedInvoiceIds = Array.from(selectedRows);
+      eligibleInvoices = invoicesData.filter(invoice => 
+        selectedInvoiceIds.includes(invoice.id) && 
+        ['SENT', 'OVERDUE', 'PARTIAL'].includes(invoice.status)
+      );
+    } else {
+      // Send reminders for all eligible invoices
+      eligibleInvoices = invoicesData.filter(invoice => 
+        ['SENT', 'OVERDUE', 'PARTIAL'].includes(invoice.status)
+      );
+    }
+
+    if (eligibleInvoices.length === 0) {
+      return;
+    }
+
+    // Set the invoices to show in the popup and open the dialog
+    setReminderInvoices(eligibleInvoices);
+    setShowReminderDialog(true);
+  }, [selectedRows, invoicesData]);
+
+  // Handle actually sending the reminders
+  const handleConfirmSendReminders = useCallback(async () => {
+    try {
+      setIsSendingReminders(true);
+      const hallOwnerId = user.role === 'sub_user' ? user.parentUserId : user.id;
+
+      // Call the send reminders service
+      const result = await sendInvoiceReminders(
+        reminderInvoices.map(inv => inv.id),
+        hallOwnerId,
+        token
+      );
+      
+      // Close dialog and clear selection
+      setShowReminderDialog(false);
+      setReminderInvoices([]);
+      setSelectedRows(new Set());
+      
+      // Refresh invoices data
+      const [invoices, payments] = await Promise.all([
+        fetchInvoices(hallOwnerId, token),
+        fetchPayments(hallOwnerId, token)
+      ]);
+      
+      setInvoicesData(invoices);
+      setPaymentsData(payments);
+      
+    } catch (err) {
+      console.error('Error sending reminders:', err);
+    } finally {
+      setIsSendingReminders(false);
+    }
+  }, [reminderInvoices, token, user]);
+
   // Calculate summary statistics
   const summaryStats = useMemo(() => {
     return calculateInvoiceSummary(filteredInvoices);
@@ -1269,7 +1337,11 @@ export default function Invoices() {
             </div>
             
             <div className="flex gap-3">
-              <Button variant="secondary" className="bg-white/10 backdrop-blur border-white/20 text-white hover:bg-white/20">
+              <Button 
+                variant="secondary" 
+                className="bg-white/10 backdrop-blur border-white/20 text-white hover:bg-white/20"
+                onClick={handleSendReminders}
+              >
                 <Mail className="mr-2 h-4 w-4" />
                 Send Reminders
               </Button>
@@ -1826,6 +1898,123 @@ export default function Invoices() {
               disabled={!newPaymentData.amount}
             >
               Record Payment
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Send Reminders Dialog */}
+      <Dialog open={showReminderDialog} onOpenChange={setShowReminderDialog}>
+        <DialogContent className="max-w-4xl w-full mx-4 sm:mx-0 max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <div className="p-2 bg-gradient-to-r from-orange-500 to-red-500 rounded-lg">
+                <Mail className="h-5 w-5 text-white" />
+              </div>
+              Send Payment Reminders
+            </DialogTitle>
+            <DialogDescription className="text-gray-600">
+              Review the invoices that will receive payment reminders. Only SENT, OVERDUE, and PARTIAL invoices are eligible.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4">
+            {/* Summary Stats */}
+            <div className="grid grid-cols-3 gap-4 p-4 bg-gradient-to-r from-orange-50 to-red-50 rounded-lg border border-orange-200">
+              <div className="text-center">
+                <div className="text-2xl font-bold text-orange-600">{reminderInvoices.length}</div>
+                <div className="text-sm text-orange-700">Total Invoices</div>
+              </div>
+              <div className="text-center">
+                <div className="text-2xl font-bold text-red-600">
+                  {reminderInvoices.filter(inv => inv.status === 'OVERDUE').length}
+                </div>
+                <div className="text-sm text-red-700">Overdue</div>
+              </div>
+              <div className="text-center">
+                <div className="text-2xl font-bold text-blue-600">
+                  ${reminderInvoices.reduce((sum, inv) => sum + (inv.finalTotal || inv.total), 0).toLocaleString('en-AU', { minimumFractionDigits: 2 })}
+                </div>
+                <div className="text-sm text-blue-700">Total Amount</div>
+              </div>
+            </div>
+
+            {/* Invoice List */}
+            <div className="space-y-3">
+              <h3 className="font-semibold text-gray-900">Invoices to receive reminders:</h3>
+              <div className="max-h-96 overflow-y-auto space-y-2">
+                {reminderInvoices.map((invoice) => (
+                  <div key={invoice.id} className="flex items-center justify-between p-3 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
+                    <div className="flex items-center gap-3">
+                      <div className={`w-3 h-3 rounded-full ${
+                        invoice.status === 'OVERDUE' ? 'bg-red-500' :
+                        invoice.status === 'SENT' ? 'bg-blue-500' :
+                        invoice.status === 'PARTIAL' ? 'bg-yellow-500' :
+                        'bg-gray-400'
+                      }`}></div>
+                      <div>
+                        <div className="font-medium text-gray-900">{invoice.id}</div>
+                        <div className="text-sm text-gray-600">{invoice.customer.name}</div>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <div className="font-semibold text-gray-900">
+                        ${(invoice.finalTotal || invoice.total).toLocaleString('en-AU', { minimumFractionDigits: 2 })} AUD
+                      </div>
+                      <div className={`text-xs px-2 py-1 rounded-full ${
+                        invoice.status === 'OVERDUE' ? 'bg-red-100 text-red-700' :
+                        invoice.status === 'SENT' ? 'bg-blue-100 text-blue-700' :
+                        invoice.status === 'PARTIAL' ? 'bg-yellow-100 text-yellow-700' :
+                        'bg-gray-100 text-gray-700'
+                      }`}>
+                        {invoice.status}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Warning Message */}
+            <div className="p-4 bg-amber-50 border border-amber-200 rounded-lg">
+              <div className="flex items-start gap-3">
+                <AlertTriangle className="h-5 w-5 text-amber-600 mt-0.5" />
+                <div>
+                  <h4 className="font-medium text-amber-800">Important Notice</h4>
+                  <p className="text-sm text-amber-700 mt-1">
+                    This will send email reminders to all customers for the invoices listed above. 
+                    Make sure you want to proceed before confirming.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <DialogFooter className="flex flex-col sm:flex-row gap-2 sm:gap-0 sm:justify-end pt-3">
+            <Button 
+              variant="outline" 
+              onClick={() => setShowReminderDialog(false)}
+              className="w-full sm:w-auto order-2 sm:order-1 h-9"
+              disabled={isSendingReminders}
+            >
+              Cancel
+            </Button>
+            <Button 
+              onClick={handleConfirmSendReminders}
+              disabled={isSendingReminders}
+              className="w-full sm:w-auto order-1 sm:order-2 h-9 bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600"
+            >
+              {isSendingReminders ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Sending Reminders...
+                </>
+              ) : (
+                <>
+                  <Mail className="mr-2 h-4 w-4" />
+                  Send {reminderInvoices.length} Reminder{reminderInvoices.length !== 1 ? 's' : ''}
+                </>
+              )}
             </Button>
           </DialogFooter>
         </DialogContent>

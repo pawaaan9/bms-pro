@@ -339,6 +339,34 @@ export const downloadInvoicePDF = async (invoiceId, token) => {
   }
 };
 
+// Send payment reminders for multiple invoices
+export const sendInvoiceReminders = async (invoiceIds, hallOwnerId, token) => {
+  try {
+    const response = await fetch(`${API_BASE_URL}/invoices/send-reminders`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        invoiceIds: invoiceIds,
+        hallOwnerId: hallOwnerId
+      })
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({ message: 'Unknown error' }));
+      throw new Error(`Failed to send reminders: ${response.status} ${response.statusText} - ${errorData.message || 'Unknown error'}`);
+    }
+
+    const result = await response.json();
+    return result;
+  } catch (error) {
+    console.error('Error sending invoice reminders:', error);
+    throw error;
+  }
+};
+
 // Helper function to calculate invoice summary statistics
 export const calculateInvoiceSummary = (invoices) => {
   const totalAmount = invoices.reduce((sum, inv) => sum + inv.total, 0);
