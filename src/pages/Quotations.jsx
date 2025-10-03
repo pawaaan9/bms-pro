@@ -72,6 +72,7 @@ import {
   deleteQuotation, 
   downloadQuotationPDF, 
   exportQuotationsToCSV,
+  fetchResources,
   formatQuotationForDisplay 
 } from '@/services/quotationService';
 
@@ -234,6 +235,16 @@ export default function Quotations() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
   const [successMessage, setSuccessMessage] = useState(null);
+  const [resourceMap, setResourceMap] = useState({});
+  
+  // Derived metrics for creative header and stats
+  const statusCounts = quotations.reduce((acc, q) => {
+    acc[q.status] = (acc[q.status] || 0) + 1;
+    return acc;
+  }, {});
+  const totalValue = quotations.reduce((sum, q) => sum + (q.totalAmount || 0), 0);
+  const decisionDenominator = (statusCounts['Sent'] || 0) + (statusCounts['Accepted'] || 0) + (statusCounts['Declined'] || 0);
+  const acceptanceRate = decisionDenominator === 0 ? 0 : Math.round(((statusCounts['Accepted'] || 0) / decisionDenominator) * 100);
   
   // Dialog states
   const [showCreateDialog, setShowCreateDialog] = useState(false);
@@ -245,6 +256,7 @@ export default function Quotations() {
   useEffect(() => {
     if (user && token) {
       loadQuotations();
+      loadResources();
     }
   }, [user, token]);
 
@@ -274,6 +286,21 @@ export default function Quotations() {
       setError('Failed to load quotations. Please try again.');
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const loadResources = async () => {
+    try {
+      const resources = await fetchResources(token);
+      const map = {};
+      resources.forEach((r) => {
+        const key = r.id || r.resourceId || r._id;
+        const name = r.name || r.resourceName || r.title || r.displayName || key;
+        if (key) map[key] = name;
+      });
+      setResourceMap(map);
+    } catch (error) {
+      console.error('Error loading resources:', error);
     }
   };
 
@@ -469,34 +496,68 @@ export default function Quotations() {
 
   return (
     <main className="space-y-6">
-      {/* Header */}
-      <header className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Quotations</h1>
-          <p className="mt-1 text-sm sm:text-base text-gray-500">
-            Create, manage, and track quotation requests for potential bookings.
-          </p>
-        </div>
-        <div className="flex flex-col sm:flex-row gap-2">
-          <Button variant="outline" disabled={selectedRows.size === 0} className="w-full sm:w-auto">
-            <Send className="mr-2 h-4 w-4" />
-            <span className="hidden sm:inline">Bulk Send</span>
-            <span className="sm:hidden">Bulk</span>
-          </Button>
-          <Button variant="outline" onClick={handleExportCSV} disabled={filteredQuotations.length === 0} className="w-full sm:w-auto">
-            <Download className="mr-2 h-4 w-4" />
-            <span className="hidden sm:inline">Export CSV</span>
-            <span className="sm:hidden">Export</span>
-          </Button>
-          <Button onClick={() => {
-            setEditingQuotation(null);
-            setShowCreateDialog(true);
-          }} className="w-full sm:w-auto">
-            <Plus className="mr-2 h-4 w-4" />
-            New Quotation
-          </Button>
-        </div>
-      </header>
+      {/* Hero Header */}
+      <Card className="bg-gradient-to-br from-blue-50 via-green-50 to-amber-50 border-blue-200">
+        <CardContent className="p-6">
+          <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
+            <div className="min-w-0">
+              <div className="flex items-center gap-2">
+                <Receipt className="w-6 h-6 text-blue-700" />
+                <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Quotations</h1>
+              </div>
+              <p className="mt-1 text-sm sm:text-base text-gray-700">Create, manage, and track quotation requests for potential bookings.</p>
+              <div className="flex flex-wrap gap-2 mt-2">
+                <Badge className="bg-white/70 text-gray-900 border-white/60">Draft {statusCounts['Draft'] || 0}</Badge>
+                <Badge className="bg-white/70 text-gray-900 border-white/60">Sent {statusCounts['Sent'] || 0}</Badge>
+                <Badge className="bg-white/70 text-gray-900 border-white/60">Accepted {statusCounts['Accepted'] || 0}</Badge>
+                <Badge className="bg-white/70 text-gray-900 border-white/60">Declined {statusCounts['Declined'] || 0}</Badge>
+              </div>
+            </div>
+            <div className="flex flex-col sm:flex-row gap-2 w-full md:w-auto">
+              <Button variant="outline" disabled={selectedRows.size === 0} className="w-full sm:w-auto text-gray-900 border-gray-300 hover:bg-white/60">
+                <Send className="mr-2 h-4 w-4" />
+                <span className="hidden sm:inline">Bulk Send</span>
+                <span className="sm:hidden">Bulk</span>
+              </Button>
+              <Button variant="outline" onClick={handleExportCSV} disabled={filteredQuotations.length === 0} className="w-full sm:w-auto text-gray-900 border-gray-300 hover:bg-white/60">
+                <Download className="mr-2 h-4 w-4" />
+                <span className="hidden sm:inline">Export CSV</span>
+                <span className="sm:hidden">Export</span>
+              </Button>
+              <Button onClick={() => {
+                setEditingQuotation(null);
+                setShowCreateDialog(true);
+              }}
+              className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white font-semibold shadow-[0_8px_20px_-8px_rgba(37,99,235,0.6)] focus:ring-2 focus:ring-blue-400">
+                <Plus className="mr-2 h-4 w-4" />
+                New Quotation
+              </Button>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Quick Stats */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 md:gap-4">
+        <Card>
+          <CardContent className="p-4">
+            <div className="text-xs uppercase text-gray-500">Total Quotations</div>
+            <div className="text-2xl font-bold text-gray-900">{quotations.length}</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4">
+            <div className="text-xs uppercase text-gray-500">Total Value</div>
+            <div className="text-2xl font-bold text-gray-900">${totalValue.toLocaleString('en-AU', { minimumFractionDigits: 2 })} AUD</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4">
+            <div className="text-xs uppercase text-gray-500">Acceptance Rate</div>
+            <div className="text-2xl font-bold text-gray-900">{acceptanceRate}%</div>
+          </CardContent>
+        </Card>
+      </div>
 
       {/* Error Message */}
       {error && (
@@ -544,8 +605,8 @@ export default function Quotations() {
 
       {/* Filter Bar */}
       <Card>
-        <CardContent className="pt-6">
-          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 sm:gap-4">
+        <CardContent className="pt-4 md:pt-6">
+          <div className="flex flex-col md:flex-row items-stretch md:items-center gap-3 md:gap-4">
             <div className="relative flex-1 min-w-0">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
               <Input
@@ -560,7 +621,7 @@ export default function Quotations() {
                 }}
               />
             </div>
-            <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 md:flex md:flex-row md:gap-4">
               <Select value={selectedResource} onValueChange={setSelectedResource}>
                 <SelectTrigger className="w-full sm:w-[180px]">
                   <SelectValue placeholder="All Resources" />
@@ -594,8 +655,8 @@ export default function Quotations() {
       <Card>
         <CardContent className="p-0">
           <div className="overflow-x-auto">
-            <Table>
-              <TableHeader>
+            <Table className="text-xs md:text-sm">
+              <TableHeader className="sticky top-0 bg-white z-10">
                 <TableRow>
                   <TableHead className="w-12">
                     <Checkbox
@@ -604,35 +665,35 @@ export default function Quotations() {
                       aria-label="Select all quotations"
                     />
                   </TableHead>
-                  <TableHead>
+                  <TableHead className="text-xs uppercase text-gray-500">
                     <Button variant="ghost" onClick={() => handleSort('id')} className="p-0 h-auto font-semibold">
                       Quotation {getSortIcon('id')}
                     </Button>
                   </TableHead>
-                  <TableHead>Customer</TableHead>
-                  <TableHead>Resource</TableHead>
-                  <TableHead>
+                  <TableHead className="text-xs uppercase text-gray-500">Customer</TableHead>
+                  <TableHead className="text-xs uppercase text-gray-500 hidden md:table-cell">Resource</TableHead>
+                  <TableHead className="text-xs uppercase text-gray-500">
                     <Button variant="ghost" onClick={() => handleSort('eventDate')} className="p-0 h-auto font-semibold">
                       Event Date {getSortIcon('eventDate')}
                     </Button>
                   </TableHead>
-                  <TableHead>
+                  <TableHead className="text-xs uppercase text-gray-500">
                     <Button variant="ghost" onClick={() => handleSort('totalAmount')} className="p-0 h-auto font-semibold">
                       Amount {getSortIcon('totalAmount')}
                     </Button>
                   </TableHead>
-                  <TableHead>
+                  <TableHead className="text-xs uppercase text-gray-500 hidden lg:table-cell">
                     <Button variant="ghost" onClick={() => handleSort('depositAmount')} className="p-0 h-auto font-semibold">
                       Deposit {getSortIcon('depositAmount')}
                     </Button>
                   </TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>
+                  <TableHead className="text-xs uppercase text-gray-500">Status</TableHead>
+                  <TableHead className="text-xs uppercase text-gray-500 hidden lg:table-cell">
                     <Button variant="ghost" onClick={() => handleSort('validUntil')} className="p-0 h-auto font-semibold">
                       Valid Until {getSortIcon('validUntil')}
                     </Button>
                   </TableHead>
-                  <TableHead>Actions</TableHead>
+                  <TableHead className="text-xs uppercase text-gray-500">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -650,6 +711,8 @@ export default function Quotations() {
                     <TableRow
                       key={quotation.id}
                       data-state={selectedRows.has(quotation.id) ? 'selected' : ''}
+                      className="odd:bg-white even:bg-gray-50/60 hover:bg-blue-50/60 cursor-pointer"
+                      onClick={() => { setSelectedQuotation(quotation); setShowDetailPane(true); }}
                     >
                       <TableCell onClick={(e) => e.stopPropagation()}>
                         <Checkbox
@@ -665,11 +728,19 @@ export default function Quotations() {
                       <TableCell>
                         <div className="font-medium">{quotation.customerName}</div>
                         <div className="text-sm text-gray-500">{quotation.customerEmail}</div>
+                        <div className="text-xs text-gray-500 md:hidden mt-0.5 flex items-center gap-1">
+                          <Building2 className="w-3.5 h-3.5 text-gray-400" />
+                          <span className="truncate" title={resourceMap[quotation.resource] || quotation.resourceName || quotation.resource}>
+                            {resourceMap[quotation.resource] || quotation.resourceName || quotation.resource}
+                          </span>
+                        </div>
                       </TableCell>
-                      <TableCell>
+                      <TableCell className="hidden md:table-cell">
                         <div className="flex items-center">
                           <Building2 className="w-4 h-4 text-gray-400 mr-2" />
-                          <span>{quotation.resource}</span>
+                          <span className="truncate max-w-[10rem] md:max-w-[12rem]" title={resourceMap[quotation.resource] || quotation.resourceName || quotation.resource}>
+                            {resourceMap[quotation.resource] || quotation.resourceName || quotation.resource}
+                          </span>
                         </div>
                       </TableCell>
                       <TableCell>
@@ -686,7 +757,7 @@ export default function Quotations() {
                           </span>
                         </div>
                       </TableCell>
-                      <TableCell>
+                      <TableCell className="hidden lg:table-cell">
                         {quotation.depositType && quotation.depositType !== 'None' ? (
                           <div className="flex items-center">
                             <DollarSign className="w-4 h-4 text-blue-400 mr-1" />
@@ -701,7 +772,7 @@ export default function Quotations() {
                       <TableCell>
                         <StatusBadge status={quotation.status} />
                       </TableCell>
-                      <TableCell className="text-sm text-gray-500">
+                      <TableCell className="text-sm text-gray-500 hidden lg:table-cell">
                         {format(quotation.validUntil, 'dd MMM yyyy')}
                       </TableCell>
                       <TableCell onClick={(e) => e.stopPropagation()}>
@@ -732,8 +803,8 @@ export default function Quotations() {
       {/* Detail Pane */}
       {showDetailPane && selectedQuotation && (
         <div className="fixed inset-0 z-50 flex">
-          <div className="fixed inset-0 bg-white/20 backdrop-blur-md" onClick={() => setShowDetailPane(false)} />
-          <div className="fixed right-0 top-0 h-full w-full sm:w-[500px] bg-white/95 backdrop-blur-md shadow-2xl border-l border-gray-200 p-4 sm:p-6 overflow-y-auto">
+          <div className="fixed inset-0 bg-black/30" onClick={() => setShowDetailPane(false)} />
+          <div className="fixed right-0 top-0 h-full w-full sm:w-[500px] bg-white shadow-2xl border-l border-gray-200 p-4 sm:p-6 overflow-y-auto">
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-xl font-semibold">Quotation Details</h2>
               <Button variant="ghost" size="icon" onClick={() => setShowDetailPane(false)}>
