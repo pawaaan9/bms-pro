@@ -148,6 +148,19 @@ export default function BookingsCompleted() {
   const [invoiceTargets, setInvoiceTargets] = useState([]);
   const [sendingInvoiceId, setSendingInvoiceId] = useState(null);
   const [sentInvoiceIds, setSentInvoiceIds] = useState(new Set());
+  const [invoiceSearch, setInvoiceSearch] = useState('');
+
+  const visibleInvoiceTargets = useMemo(() => {
+    if (!invoiceSearch) return invoiceTargets;
+    const q = invoiceSearch.toLowerCase();
+    return invoiceTargets.filter(b =>
+      (b.customer?.name || '').toLowerCase().includes(q) ||
+      (b.customer?.email || '').toLowerCase().includes(q) ||
+      (b.id || '').toLowerCase().includes(q) ||
+      (b.resource || '').toLowerCase().includes(q) ||
+      (b.purpose || '').toLowerCase().includes(q)
+    );
+  }, [invoiceTargets, invoiceSearch]);
 
   // Fetch completed bookings from backend
   const fetchCompletedBookings = useCallback(async (isRefresh = false) => {
@@ -723,7 +736,7 @@ export default function BookingsCompleted() {
 
       {/* Send Invoices Dialog */}
       <Dialog open={showSendInvoicesDialog} onOpenChange={setShowSendInvoicesDialog}>
-        <DialogContent className="w-[95vw] sm:max-w-lg">
+        <DialogContent className="w-[92vw] sm:max-w-md max-h-[70vh] sm:max-h-[60vh] flex flex-col overflow-hidden">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <FileText className="h-5 w-5 text-indigo-600" />
@@ -735,35 +748,46 @@ export default function BookingsCompleted() {
           </DialogHeader>
 
           {/* Fancy summary */}
-          <div className="mb-3 rounded-md border bg-gradient-to-r from-indigo-50 to-purple-50 p-3 text-xs sm:text-sm">
+          <div className="mb-2 rounded-md border bg-gradient-to-r from-indigo-50 to-purple-50 p-2.5 text-[11px] sm:text-sm">
             <div className="flex flex-wrap items-center gap-2 sm:gap-3">
-              <div className="px-2 py-1 rounded-full bg-white/70 border text-indigo-700">
-                {invoiceTargets.length} customer{invoiceTargets.length !== 1 ? 's' : ''}
+              <div className="px-2 py-0.5 rounded-full bg-white/70 border text-indigo-700">
+                {visibleInvoiceTargets.length}/{invoiceTargets.length} customer{visibleInvoiceTargets.length !== 1 ? 's' : ''}
               </div>
-              <div className="px-2 py-1 rounded-full bg-white/70 border text-purple-700">
-                Total ${invoiceTargets.reduce((s,b)=>s+(b.totalValue||0),0).toLocaleString('en-AU')}
+              <div className="px-2 py-0.5 rounded-full bg-white/70 border text-purple-700">
+                Total ${visibleInvoiceTargets.reduce((s,b)=>s+(b.totalValue||0),0).toLocaleString('en-AU')}
               </div>
-              <div className="px-2 py-1 rounded-full bg-white/70 border text-emerald-700">
+              <div className="px-2 py-0.5 rounded-full bg-white/70 border text-emerald-700">
                 Sent {Array.from(sentInvoiceIds).length}
               </div>
             </div>
           </div>
 
-          <div className="max-h-[65vh] overflow-auto border rounded-md">
-            {invoiceTargets.length === 0 ? (
+          {/* Search bar */}
+          <div className="relative mb-2">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+            <Input
+              placeholder="Search name, email, booking ID, event, resource..."
+              value={invoiceSearch}
+              onChange={(e) => setInvoiceSearch(e.target.value)}
+              className="pl-10 h-9 text-sm"
+            />
+          </div>
+
+          <div className="flex-1 overflow-auto border rounded-md">
+            {visibleInvoiceTargets.length === 0 ? (
               <div className="p-4 text-sm text-gray-500">No bookings to invoice.</div>
             ) : (
-              invoiceTargets.map(b => (
-                <div key={b.id} className="group flex flex-col sm:flex-row sm:items-start justify-between gap-3 p-3 border-b last:border-b-0 hover:bg-gray-50">
-                  <div className="flex items-start gap-3 min-w-0">
-                    <div className="h-8 w-8 sm:h-9 sm:w-9 rounded-full bg-gradient-to-br from-indigo-500 to-purple-500 text-white flex items-center justify-center font-semibold flex-shrink-0">
+              visibleInvoiceTargets.map(b => (
+                <div key={b.id} className="group flex flex-col sm:flex-row sm:items-start justify-between gap-2 p-2.5 border-b last:border-b-0 hover:bg-gray-50">
+                  <div className="flex items-start gap-2.5 min-w-0">
+                    <div className="h-7 w-7 sm:h-8 sm:w-8 rounded-full bg-gradient-to-br from-indigo-500 to-purple-500 text-white flex items-center justify-center font-semibold flex-shrink-0 text-[11px]">
                       {b.customer.name?.split(' ').map(s=>s[0]).slice(0,2).join('').toUpperCase()}
                     </div>
-                    <div className="text-xs sm:text-sm min-w-0">
+                    <div className="text-[11px] sm:text-sm min-w-0">
                       <div className="font-medium flex items-center gap-2 min-w-0">
                         <span className="truncate max-w-[52vw] sm:max-w-[24rem]">{b.customer.name}</span> <span className="text-gray-400 hidden sm:inline">•</span>
                         <span className="text-gray-500 truncate max-w-[52vw] sm:max-w-[18rem]">{b.customer.email}</span>
-                        <span className="ml-0 sm:ml-2 rounded-full border px-1.5 py-0.5 text-[9px] sm:text-[10px] uppercase tracking-wide text-purple-700 bg-purple-50 whitespace-nowrap">Final</span>
+                        <span className="ml-0 sm:ml-2 rounded-full border px-1 py-0.5 text-[9px] sm:text-[10px] uppercase tracking-wide text-purple-700 bg-purple-50 whitespace-nowrap">Final</span>
                       </div>
                       <div className="text-gray-600 truncate max-w-[72vw] sm:max-w-[36rem]">
                         Invoice for {b.purpose} — {format(b.start, 'dd MMM yyyy')} ({b.resource}) • ${b.totalValue.toLocaleString('en-AU')}
