@@ -4,7 +4,6 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import {
-  Plus,
   Download,
   Search,
   Printer,
@@ -14,7 +13,6 @@ import {
   RefreshCw,
   AlertTriangle,
   FileText,
-  Eye,
 } from 'lucide-react';
 import {
   Table,
@@ -43,6 +41,7 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog';
 import { useAuth } from '../contexts/AuthContext';
+import { createInvoice, updateInvoiceStatus, generateInvoiceFromBooking, fetchInvoices } from '@/services/invoiceService';
 
 // Transform backend booking data to match frontend format
 const transformBookingData = (backendBooking) => {
@@ -144,6 +143,11 @@ export default function BookingsCompleted() {
     withAddOns: false,
     publicHoliday: false,
   });
+  const [isSendingInvoices, setIsSendingInvoices] = useState(false);
+  const [showSendInvoicesDialog, setShowSendInvoicesDialog] = useState(false);
+  const [invoiceTargets, setInvoiceTargets] = useState([]);
+  const [sendingInvoiceId, setSendingInvoiceId] = useState(null);
+  const [sentInvoiceIds, setSentInvoiceIds] = useState(new Set());
 
   // Fetch completed bookings from backend
   const fetchCompletedBookings = useCallback(async (isRefresh = false) => {
@@ -290,6 +294,150 @@ export default function BookingsCompleted() {
     setSelectedRows(newSelection);
   };
 
+  const openSendInvoicesDialog = useCallback(() => {
+    const targets = selectedRows.size > 0 
+      ? filteredBookings.filter(b => selectedRows.has(b.id))
+      : filteredBookings;
+    if (!targets || targets.length === 0) {
+      alert('No bookings available to invoice.');
+      return;
+    }
+    setInvoiceTargets(targets);
+    setShowSendInvoicesDialog(true);
+  }, [filteredBookings, selectedRows]);
+
+  const sendInvoiceForBooking = useCallback(async (booking) => {
+    try {
+      setIsSendingInvoices(true);
+      setSendingInvoiceId(booking.id);
+      const token = localStorage.getItem('token');
+      if (!token) throw new Error('No authentication token found');
+
+      const description = `Final invoice for ${booking.purpose} on ${format(booking.start, 'dd MMM yyyy')}`;
+      const invoicePayload = generateInvoiceFromBooking(
+        { id: booking.id },
+        'FINAL',
+        Number(booking.totalValue || 0),
+        description
+      );
+      const created = await createInvoice(invoicePayload, token);
+      await updateInvoiceStatus(created.id, 'SENT', token);
+
+      alert(`Invoice sent to ${booking.customer.name} (${booking.customer.email}).`);
+
+      // Optionally remove from dialog list after sending
+      setInvoiceTargets(prev => prev.filter(b => b.id !== booking.id));
+      setSentInvoiceIds(prev => { const next = new Set(prev); next.add(booking.id); return next; });
+    } catch (err) {
+      console.error('Error sending invoice:', err);
+      const message = err?.message || '';
+      const isConflict = message.includes('409') || message.toLowerCase().includes('already exists');
+      if (isConflict) {
+        try {
+          const token = localStorage.getItem('token');
+          const hallOwnerId = (user?.role === 'sub_user' && user?.parentUserId) ? user.parentUserId : user?.id;
+          const invoices = await fetchInvoices(hallOwnerId, token);
+          const existing = invoices.find(inv => inv.booking === booking.id && inv.type === 'FINAL');
+          if (existing) {
+            if (existing.status !== 'SENT') {
+              await updateInvoiceStatus(existing.id, 'SENT', token);
+              alert(`Invoice sent to ${booking.customer.name} (${booking.customer.email}).`);
+            } else {
+              alert('Invoice already sent for this booking.');
+            }
+            setInvoiceTargets(prev => prev.filter(b => b.id !== booking.id));
+            setSentInvoiceIds(prev => { const next = new Set(prev); next.add(booking.id); return next; });
+          } else {
+            alert('An invoice already exists and could not be located for sending.');
+          }
+        } catch (fallbackErr) {
+          console.error('Fallback send existing invoice failed:', fallbackErr);
+          alert(`Failed to send existing invoice: ${fallbackErr.message}`);
+        }
+      } else {
+        alert(`Failed to send invoice: ${message}`);
+      }
+    } finally {
+      setSendingInvoiceId(null);
+      setIsSendingInvoices(false);
+    }
+  }, []);
+
+  const handlePrintReports = useCallback(() => {
+    const dataToPrint = selectedRows.size > 0 
+      ? filteredBookings.filter(b => selectedRows.has(b.id))
+      : filteredBookings;
+
+    const summaryHtml = `
+      <div style="margin-bottom:16px;padding:12px;border:1px solid #e5e7eb;border-radius:8px">
+        <div style="font-weight:600;margin-bottom:8px">Summary</div>
+        <div style="display:flex;gap:16px;flex-wrap:wrap;font-size:12px;color:#374151">
+          <div>Total completed: <strong>${dataToPrint.length}</strong></div>
+          <div>Total revenue: <strong>$${dataToPrint.reduce((s,b)=>s+b.totalValue,0).toLocaleString('en-AU')}</strong></div>
+          <div>Avg value: <strong>$${(dataToPrint.length>0?Math.round(dataToPrint.reduce((s,b)=>s+b.totalValue,0)/dataToPrint.length):0).toLocaleString('en-AU')}</strong></div>
+        </div>
+      </div>`;
+
+    const html = `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <meta charset="utf-8" />
+          <title>Completed Bookings Report</title>
+          <style>
+            body { font-family: Arial, sans-serif; margin: 24px; color: #111827; }
+            h1 { font-size: 20px; margin: 0 0 12px; }
+            .meta { color: #6b7280; font-size: 12px; margin-bottom: 20px; }
+            .card { border: 1px solid #e5e7eb; border-radius: 8px; padding: 16px; margin-bottom: 12px; }
+            .row { display: flex; gap: 16px; flex-wrap: wrap; }
+            .col { min-width: 180px; }
+            .label { font-size: 11px; color: #6b7280; }
+            .value { font-size: 14px; font-weight: 600; }
+            hr { border: none; border-top: 1px solid #e5e7eb; margin: 12px 0; }
+            @media print { .page-break { page-break-after: always; } }
+          </style>
+        </head>
+        <body>
+          <h1>Bookings — Completed</h1>
+          <div class="meta">Generated ${format(new Date(), 'dd MMM yyyy HH:mm')}</div>
+          ${summaryHtml}
+          ${dataToPrint.map(b => `
+            <div class="card">
+              <div class="row">
+                <div class="col"><div class="label">Booking ID</div><div class="value">${b.id}</div></div>
+                <div class="col"><div class="label">Customer</div><div class="value">${b.customer.name}</div></div>
+                <div class="col"><div class="label">Email</div><div class="value">${b.customer.email}</div></div>
+                <div class="col"><div class="label">Resource</div><div class="value">${b.resource}</div></div>
+              </div>
+              <div class="row">
+                <div class="col"><div class="label">Start</div><div class="value">${format(b.start, 'dd MMM yyyy, HH:mm')}</div></div>
+                <div class="col"><div class="label">End</div><div class="value">${format(b.end, 'dd MMM yyyy, HH:mm')}</div></div>
+                <div class="col"><div class="label">Guests</div><div class="value">${b.guests}</div></div>
+                <div class="col"><div class="label">Add-ons</div><div class="value">${b.addOns}</div></div>
+              </div>
+              <hr />
+              <div class="row">
+                <div class="col"><div class="label">Purpose</div><div class="value">${b.purpose || ''}</div></div>
+                <div class="col"><div class="label">Deposit</div><div class="value">${b.deposit}</div></div>
+                <div class="col"><div class="label">Bond</div><div class="value">$${b.bond.toLocaleString('en-AU')}</div></div>
+                <div class="col"><div class="label">Total Value</div><div class="value">$${b.totalValue.toLocaleString('en-AU')}</div></div>
+              </div>
+            </div>
+          `).join('')}
+          <script>
+            window.onload = function() { window.print(); }
+          </script>
+        </body>
+      </html>
+    `;
+
+    const w = window.open('', '_blank');
+    if (!w) return;
+    w.document.open();
+    w.document.write(html);
+    w.document.close();
+  }, [filteredBookings, selectedRows]);
+
   const handleExport = useCallback(() => {
     const dataToExport = selectedRows.size > 0 
       ? filteredBookings.filter(b => selectedRows.has(b.id))
@@ -334,26 +482,28 @@ export default function BookingsCompleted() {
   return (
     <main className="space-y-6">
       {/* Header */}
-      <header className="flex flex-wrap items-center justify-between gap-4">
+      <header className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-4">
         <div>
           <h1 className="text-3xl font-bold text-gray-900">Bookings — Completed</h1>
           <p className="mt-1 text-gray-500">
             Review completed events, finalise invoices and manage post-event tasks.
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2 sm:justify-end">
           <Button 
             variant="outline" 
+            size="sm"
             onClick={() => fetchCompletedBookings(true)}
             disabled={refreshing}
           >
             <RefreshCw className={`mr-2 h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
             {refreshing ? 'Refreshing...' : 'Refresh'}
           </Button>
-          <Button variant="outline"><Printer className="mr-2 h-4 w-4" />Print reports</Button>
-          <Button variant="outline"><Mail className="mr-2 h-4 w-4" />Send invoices</Button>
-          <Button variant="outline" onClick={handleExport}><Download className="mr-2 h-4 w-4" />Export CSV</Button>
-          <Button><Plus className="mr-2 h-4 w-4" />New Booking</Button>
+          <Button variant="outline" size="sm" onClick={handlePrintReports}><Printer className="mr-2 h-4 w-4" />Print reports</Button>
+          <Button variant="outline" size="sm" onClick={openSendInvoicesDialog} disabled={isSendingInvoices}>
+            <Mail className="mr-2 h-4 w-4" />{isSendingInvoices ? 'Sending…' : 'Send invoices'}
+          </Button>
+          <Button variant="outline" size="sm" onClick={handleExport}><Download className="mr-2 h-4 w-4" />Export CSV</Button>
         </div>
       </header>
 
@@ -418,8 +568,8 @@ export default function BookingsCompleted() {
       {/* Filters Bar */}
       <Card>
         <CardContent className="pt-6 space-y-4">
-          <div className="flex flex-wrap items-center gap-4">
-            <div className="relative flex-1 min-w-[250px]">
+          <div className="flex flex-wrap items-center gap-3 sm:gap-4">
+            <div className="relative flex-1 min-w-[180px] sm:min-w-[250px]">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
               <Input
                 placeholder="Search by ID, customer, event..."
@@ -555,13 +705,9 @@ export default function BookingsCompleted() {
                       <TableCell className="text-right">{booking.addOns}</TableCell>
                       <TableCell>
                         <div className="flex items-center gap-2">
-                          <Button variant="outline" size="sm">
-                            <Eye className="mr-1 h-3 w-3" />
-                            View
-                          </Button>
-                          <Button variant="outline" size="sm">
+                          <Button variant="outline" size="sm" onClick={() => sendInvoiceForBooking(booking)} disabled={sendingInvoiceId === booking.id}>
                             <FileText className="mr-1 h-3 w-3" />
-                            Invoice
+                            {sendingInvoiceId === booking.id ? 'Sending…' : 'Invoice'}
                           </Button>
                         </div>
                       </TableCell>
@@ -573,6 +719,77 @@ export default function BookingsCompleted() {
           )}
         </CardContent>
       </Card>
+
+
+      {/* Send Invoices Dialog */}
+      <Dialog open={showSendInvoicesDialog} onOpenChange={setShowSendInvoicesDialog}>
+        <DialogContent className="w-[95vw] sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <FileText className="h-5 w-5 text-indigo-600" />
+              Send Invoices
+            </DialogTitle>
+            <DialogDescription>
+              Send invoices one-by-one to the selected customers.
+            </DialogDescription>
+          </DialogHeader>
+
+          {/* Fancy summary */}
+          <div className="mb-3 rounded-md border bg-gradient-to-r from-indigo-50 to-purple-50 p-3 text-xs sm:text-sm">
+            <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+              <div className="px-2 py-1 rounded-full bg-white/70 border text-indigo-700">
+                {invoiceTargets.length} customer{invoiceTargets.length !== 1 ? 's' : ''}
+              </div>
+              <div className="px-2 py-1 rounded-full bg-white/70 border text-purple-700">
+                Total ${invoiceTargets.reduce((s,b)=>s+(b.totalValue||0),0).toLocaleString('en-AU')}
+              </div>
+              <div className="px-2 py-1 rounded-full bg-white/70 border text-emerald-700">
+                Sent {Array.from(sentInvoiceIds).length}
+              </div>
+            </div>
+          </div>
+
+          <div className="max-h-[65vh] overflow-auto border rounded-md">
+            {invoiceTargets.length === 0 ? (
+              <div className="p-4 text-sm text-gray-500">No bookings to invoice.</div>
+            ) : (
+              invoiceTargets.map(b => (
+                <div key={b.id} className="group flex flex-col sm:flex-row sm:items-start justify-between gap-3 p-3 border-b last:border-b-0 hover:bg-gray-50">
+                  <div className="flex items-start gap-3 min-w-0">
+                    <div className="h-8 w-8 sm:h-9 sm:w-9 rounded-full bg-gradient-to-br from-indigo-500 to-purple-500 text-white flex items-center justify-center font-semibold flex-shrink-0">
+                      {b.customer.name?.split(' ').map(s=>s[0]).slice(0,2).join('').toUpperCase()}
+                    </div>
+                    <div className="text-xs sm:text-sm min-w-0">
+                      <div className="font-medium flex items-center gap-2 min-w-0">
+                        <span className="truncate max-w-[52vw] sm:max-w-[24rem]">{b.customer.name}</span> <span className="text-gray-400 hidden sm:inline">•</span>
+                        <span className="text-gray-500 truncate max-w-[52vw] sm:max-w-[18rem]">{b.customer.email}</span>
+                        <span className="ml-0 sm:ml-2 rounded-full border px-1.5 py-0.5 text-[9px] sm:text-[10px] uppercase tracking-wide text-purple-700 bg-purple-50 whitespace-nowrap">Final</span>
+                      </div>
+                      <div className="text-gray-600 truncate max-w-[72vw] sm:max-w-[36rem]">
+                        Invoice for {b.purpose} — {format(b.start, 'dd MMM yyyy')} ({b.resource}) • ${b.totalValue.toLocaleString('en-AU')}
+                      </div>
+                      <div className="text-[10px] sm:text-xs text-gray-400 truncate max-w-[72vw] sm:max-w-[36rem]">{b.id} · {format(b.start, 'HH:mm')} - {format(b.end, 'HH:mm')}</div>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 sm:self-auto self-end">
+                    {sentInvoiceIds.has(b.id) && (
+                      <span className="inline-flex items-center gap-1 text-emerald-600 text-sm">
+                        <CheckCircle className="h-4 w-4" /> Sent
+                      </span>
+                    )}
+                    <Button size="sm" onClick={() => sendInvoiceForBooking(b)} disabled={sendingInvoiceId === b.id || sentInvoiceIds.has(b.id)}>
+                      {sendingInvoiceId === b.id ? 'Sending…' : (sentInvoiceIds.has(b.id) ? 'Sent' : 'Send')}
+                    </Button>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowSendInvoicesDialog(false)}>Close</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </main>
   );
 }
