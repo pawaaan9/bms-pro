@@ -1,5 +1,6 @@
 import React from "react";
 import { useAuth } from "@/contexts/AuthContext";
+import { createPageUrl } from "@/utils";
 import { 
   BookOpen, 
   Calendar, 
@@ -45,9 +46,30 @@ export default function Help() {
   // Hall owner documentation
   return (
     <div className="max-w-6xl">
+      {/* Hero */}
       <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900 mb-2">BMS-Pro Admin Panel Documentation</h1>
-        <p className="text-gray-600">Complete guide to managing your venue with BMS-Pro</p>
+        <div className="bg-gradient-to-br from-blue-50 via-green-50 to-amber-50 border border-blue-200 rounded-xl p-6">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <div className="flex items-center gap-2 mb-1">
+                <BookOpen className="w-6 h-6 text-blue-700" />
+                <h1 className="text-2xl md:text-3xl font-bold text-gray-900">BMS-Pro Admin Panel Documentation</h1>
+              </div>
+              <p className="text-gray-700">Complete guide to managing your venue with BMS-Pro</p>
+              <div className="flex flex-wrap gap-2 mt-3">
+                <span className="text-xs px-2 py-1 rounded-full bg-white/70 border border-white/60 text-gray-900">Quick Start</span>
+                <span className="text-xs px-2 py-1 rounded-full bg-white/70 border border-white/60 text-gray-900">Videos</span>
+                <span className="text-xs px-2 py-1 rounded-full bg-white/70 border border-white/60 text-gray-900">FAQs</span>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-2 min-w-[220px]">
+              <a href={createPageUrl('Dashboard')} className="rounded-lg border border-gray-200 bg-white p-3 text-sm hover:shadow-sm">Dashboard →</a>
+              <a href={createPageUrl('Calendar')} className="rounded-lg border border-gray-200 bg-white p-3 text-sm hover:shadow-sm">Calendar →</a>
+              <a href={createPageUrl('BookingsAll')} className="rounded-lg border border-gray-200 bg-white p-3 text-sm hover:shadow-sm">Bookings →</a>
+              <a href={createPageUrl('Invoices')} className="rounded-lg border border-gray-200 bg-white p-3 text-sm hover:shadow-sm">Invoices →</a>
+            </div>
+          </div>
+        </div>
       </div>
 
       <div className="space-y-8">
@@ -542,22 +564,42 @@ export default function Help() {
           </div>
         </section>
 
+        {/* FAQs */}
+        <section className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+          <h2 className="text-2xl font-semibold text-gray-900 mb-4">FAQs</h2>
+          <details className="border rounded-lg p-4 mb-3">
+            <summary className="font-medium cursor-pointer">How do I invite a sub-user?</summary>
+            <p className="mt-2 text-gray-700">Go to Settings → Roles & Permissions → Add team member and assign a role.</p>
+          </details>
+          <details className="border rounded-lg p-4 mb-3">
+            <summary className="font-medium cursor-pointer">Where do I change pricing?</summary>
+            <p className="mt-2 text-gray-700">Navigate to Pricing → Rate Cards. Update or create a new rate card.</p>
+          </details>
+          <details className="border rounded-lg p-4">
+            <summary className="font-medium cursor-pointer">Why are my audit logs empty?</summary>
+            <p className="mt-2 text-gray-700">Ensure the backend is running, you are logged in, and some actions have been performed to generate logs.</p>
+          </details>
+        </section>
+
         {/* Support Section */}
         <section className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
           <h2 className="text-2xl font-semibold text-gray-900 mb-4">Need More Help?</h2>
           <p className="text-gray-700 mb-4">
             If you need additional assistance or have questions not covered in this documentation:
           </p>
-          <div className="bg-gray-50 rounded-lg p-4 space-y-2">
-            <p className="text-gray-700">
-              <strong>Technical Support:</strong> Contact your system administrator or support team
-            </p>
-            <p className="text-gray-700">
-              <strong>Training:</strong> Request additional training sessions for you and your team
-            </p>
-            <p className="text-gray-700">
-              <strong>Feedback:</strong> We welcome your suggestions for improving BMS-Pro
-            </p>
+          <div className="grid md:grid-cols-3 gap-4">
+            <div className="rounded-lg border border-gray-200 p-4">
+              <h3 className="font-semibold mb-1">Technical Support</h3>
+              <p className="text-sm text-gray-700">Contact your system administrator or support team.</p>
+            </div>
+            <div className="rounded-lg border border-gray-200 p-4">
+              <h3 className="font-semibold mb-1">Training</h3>
+              <p className="text-sm text-gray-700">Request training sessions for you and your team.</p>
+            </div>
+            <div className="rounded-lg border border-gray-200 p-4">
+              <h3 className="font-semibold mb-1">Feedback</h3>
+              <p className="text-sm text-gray-700">We welcome your suggestions to improve BMS‑Pro.</p>
+            </div>
           </div>
         </section>
       </div>

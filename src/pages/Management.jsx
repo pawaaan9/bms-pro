@@ -91,22 +91,34 @@ export default function Management() {
   return (
     <div className={`space-y-6 ${showPrintView ? 'print-view' : ''}`}>
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900">Cranbourne Public Hall</h1>
-          <p className="text-gray-600 mt-1">Volunteer Profile: Judy Davis</p>
-        </div>
-        <div className="flex items-center gap-2">
-          <Button 
-            variant="outline" 
-            onClick={handlePrint}
-            className="hidden print:hidden"
-          >
-            <Printer className="w-4 h-4 mr-2" />
-            Print / Save PDF
-          </Button>
-        </div>
-      </div>
+      <Card className="bg-gradient-to-br from-blue-50 via-green-50 to-amber-50 border-blue-200">
+        <CardContent className="p-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <div className="flex items-center gap-2">
+                <Shield className="w-6 h-6 text-blue-700" />
+                <h1 className="text-2xl md:text-3xl font-bold text-gray-900">Cranbourne Public Hall</h1>
+              </div>
+              <p className="text-gray-700 mt-1">Volunteer Profile: Judy Davis</p>
+              <div className="flex flex-wrap gap-2 mt-2">
+                <Badge className="bg-white/70 text-gray-900 border-white/60">Volunteer-run</Badge>
+                <Badge className="bg-white/70 text-gray-900 border-white/60">Community Venue</Badge>
+                <Badge className="bg-white/70 text-gray-900 border-white/60">Welcoming & Safe</Badge>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <Button 
+                variant="outline" 
+                onClick={handlePrint}
+                className="hidden print:hidden text-gray-900 border-gray-300 hover:bg-white/60"
+              >
+                <Printer className="w-4 h-4 mr-2" />
+                Print / Save PDF
+              </Button>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Hero Section */}
       <div className="grid md:grid-cols-[auto,1fr] gap-6">
@@ -218,16 +230,28 @@ export default function Management() {
               <div className="relative inline-block">
                 <img 
                   src={image2} 
-                  alt="Community member at Cranbourne Public Hall" 
+                  alt="Bill Davis - Supplies Coordinator" 
                   className="w-48 h-48 rounded-2xl object-cover shadow-lg mx-auto"
                 />
                 <div className="absolute -bottom-2 -right-2 w-10 h-10 bg-green-500 rounded-full flex items-center justify-center shadow-lg">
                   <Users className="w-5 h-5 text-white" />
                 </div>
               </div>
-              <h3 className="text-lg font-semibold mt-4 text-gray-900">Community Member</h3>
-              <p className="text-sm text-gray-600">Active Volunteer</p>
-              <p className="text-xs text-gray-500 mt-1">Supporting local initiatives</p>
+              <h3 className="text-lg font-semibold mt-4 text-gray-900">Bill Davis</h3>
+              <p className="text-sm text-gray-600">Supplies Coordinator</p>
+              <div className="flex flex-wrap gap-2 justify-center mt-2">
+                <Badge className="bg-gray-100 text-gray-800">Volunteer</Badge>
+                <Badge className="bg-gray-100 text-gray-800">Supplies</Badge>
+                <Badge className="bg-gray-100 text-gray-800">Inventory</Badge>
+                <Badge className="bg-gray-100 text-gray-800">Vendors</Badge>
+              </div>
+              <div className="text-xs text-gray-500 mt-3">
+                <div className="uppercase tracking-wide text-gray-400">About</div>
+                <ul className="mt-1 space-y-1 text-left inline-block">
+                  <li>• Procures and manages paper towels, toilet paper, and cleaning chemicals.</li>
+                  <li>• Coordinates with Venue Manager for stock thresholds and supplier timing.</li>
+                </ul>
+              </div>
             </div>
           </div>
         </CardContent>
