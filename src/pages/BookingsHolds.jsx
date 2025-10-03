@@ -18,15 +18,7 @@ import {
   RefreshCw,
   Calendar,
 } from 'lucide-react';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
-import { Checkbox } from '@/components/ui/checkbox';
+import BookingsTableAdvanced from '../components/bookings/BookingsTableAdvanced';
 import {
   Select,
   SelectContent,
@@ -90,6 +82,7 @@ export default function BookingsHolds() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [refreshing, setRefreshing] = useState(false);
+  const [sortConfig, setSortConfig] = useState({ column: 'start', direction: 'desc' });
   
   // Dialog states
   const [confirmDialog, setConfirmDialog] = useState({ open: false, booking: null });
@@ -350,6 +343,29 @@ export default function BookingsHolds() {
     fetchPendingBookings(true);
   };
 
+  // Advanced table handlers
+  const handleRowClick = useCallback((booking) => {
+    setSelectedBooking(booking);
+    setIsDetailPaneOpen(true);
+  }, []);
+
+  const handleBulkAction = useCallback((action) => {
+    console.log('Bulk action on booking requests:', action, Array.from(selectedRows));
+    setSelectedRows(new Set());
+  }, [selectedRows]);
+
+  const handleConfirmOrder = useCallback((bookingId) => {
+    const booking = bookings.find(b => b.id === bookingId);
+    if (!booking) return;
+    setConfirmDialog({ open: true, booking });
+  }, [bookings]);
+
+  const handleCancelOrder = useCallback((bookingId) => {
+    const booking = bookings.find(b => b.id === bookingId);
+    if (!booking) return;
+    setCancelDialog({ open: true, booking });
+  }, [bookings]);
+
   const handleExport = () => {
     const csv = [
       [
@@ -451,180 +467,48 @@ export default function BookingsHolds() {
       </Card>
 
       {/* Table */}
-      <Card>
+      <Card className="flex-1 shadow-xl border-0 overflow-hidden">
         <CardContent className="p-0">
-          <div className="overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="w-12">
-                    <Checkbox
-                      checked={selectedRows.size > 0 && selectedRows.size === filteredBookings.length}
-                      onCheckedChange={(checked) => {
-                        if (checked) {
-                          setSelectedRows(new Set(filteredBookings.map(b => b.id)));
-                        } else {
-                          setSelectedRows(new Set());
-                        }
-                      }}
-                      aria-label="Select all booking requests"
-                    />
-                  </TableHead>
-                  <TableHead>
-                    <button className="flex items-center gap-2 font-medium">
-                      Booking
-                    </button>
-                  </TableHead>
-                  <TableHead>
-                    <button className="flex items-center gap-2 font-medium">
-                      Start
-                    </button>
-                  </TableHead>
-                  <TableHead>End</TableHead>
-                  <TableHead>
-                    <button className="flex items-center gap-2 font-medium">
-                      Requested
-                      <Clock className="h-4 w-4" />
-                    </button>
-                  </TableHead>
-                  <TableHead>Resource</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {loading ? (
-                  <TableRow>
-                    <TableCell colSpan={8} className="h-24 text-center">
-                      <div className="flex items-center justify-center">
-                        <RefreshCw className="h-6 w-6 animate-spin mr-2" />
-                        Loading booking requests...
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ) : error ? (
-                  <TableRow>
-                    <TableCell colSpan={8} className="h-24 text-center">
-                      <div className="text-center">
-                        <AlertTriangle className="h-6 w-6 mx-auto mb-2 text-red-500" />
-                        <p className="text-red-600 mb-2">{error}</p>
-                        <Button onClick={handleRefresh} variant="outline" size="sm">
-                          Try Again
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ) : filteredBookings.length > 0 ? (
-                  filteredBookings.map((booking) => {
-                    const timeSinceRequest = getTimeSinceRequest(booking.createdAt);
-                    
-                    return (
-                      <TableRow
-                        key={booking.id}
-                        data-state={selectedRows.has(booking.id) ? 'selected' : ''}
-                        className="cursor-pointer hover:bg-gray-50"
-                        onClick={() => {
-                          setSelectedBooking(booking);
-                          setIsDetailPaneOpen(true);
-                        }}
-                      >
-                        <TableCell onClick={(e) => e.stopPropagation()}>
-                          <Checkbox
-                            checked={selectedRows.has(booking.id)}
-                            onCheckedChange={(checked) => {
-                              const newSelectedRows = new Set(selectedRows);
-                              if (checked) {
-                                newSelectedRows.add(booking.id);
-                              } else {
-                                newSelectedRows.delete(booking.id);
-                              }
-                              setSelectedRows(newSelectedRows);
-                            }}
-                            aria-label={`Select booking ${booking.id}`}
-                          />
-                        </TableCell>
-                        <TableCell className="font-medium">
-                          <div>{booking.id}</div>
-                          <div className="text-sm text-gray-500">{booking.purpose}</div>
-                        </TableCell>
-                        <TableCell>
-                          <div>{format(booking.start, 'dd MMM yyyy')}</div>
-                          <div className="text-sm text-gray-500">{format(booking.start, 'HH:mm')}</div>
-                        </TableCell>
-                        <TableCell>
-                          <div>{format(booking.end, 'dd MMM yyyy')}</div>
-                          <div className="text-sm text-gray-500">{format(booking.end, 'HH:mm')}</div>
-                        </TableCell>
-                        <TableCell>
-                          <div className={`flex items-center gap-2 ${timeSinceRequest.className}`}>
-                            {timeSinceRequest.urgent && <AlertTriangle className="h-4 w-4" />}
-                            <span>{timeSinceRequest.text}</span>
-                          </div>
-                          <div className="text-xs text-gray-500 mt-1">
-                            Created {format(booking.createdAt, 'dd MMM HH:mm')}
-                          </div>
-                        </TableCell>
-                        <TableCell>{booking.resource}</TableCell>
-                        <TableCell>
-                          {getStatusBadge(booking.status)}
-                        </TableCell>
-                        <TableCell onClick={(e) => e.stopPropagation()}>
-                          <div className="flex gap-1">
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => handleConfirm(booking)}
-                              title="Confirm booking"
-                              className="text-green-700 border-green-200 hover:bg-green-50"
-                            >
-                              <CheckCircle className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => handleCancel(booking)}
-                              title="Cancel booking"
-                              className="text-red-700 border-red-200 hover:bg-red-50"
-                            >
-                              <XCircle className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => {
-                                setSelectedBooking(booking);
-                                setIsDetailPaneOpen(true);
-                              }}
-                              title="View details"
-                            >
-                              <Eye className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })
-                ) : (
-                  <TableRow>
-                    <TableCell colSpan={8} className="h-24 text-center">
-                      <div className="flex flex-col items-center gap-2">
-                        <Calendar className="h-8 w-8 text-gray-400" />
-                        <p>No booking requests found.</p>
-                        <p className="text-sm text-gray-500">
-                          {searchTerm ? 'Try adjusting your search terms' : 'No pending booking requests found. New pending requests will appear here.'}
-                        </p>
-                        {searchTerm && (
-                          <Button variant="link" onClick={() => setSearchTerm('')}>
-                            Clear search
-                          </Button>
-                        )}
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                )}
-              </TableBody>
-            </Table>
-          </div>
+          {loading ? (
+            <div className="flex items-center justify-center h-64">
+              <div className="text-center">
+                <Calendar className="h-8 w-8 animate-pulse mx-auto mb-4 text-blue-500" />
+                <p className="text-gray-600">Loading booking requests...</p>
+              </div>
+            </div>
+          ) : error ? (
+            <div className="flex items-center justify-center h-64">
+              <div className="text-center">
+                <AlertTriangle className="h-8 w-8 mx-auto mb-4 text-red-500" />
+                <p className="text-red-600 mb-4">{error}</p>
+                <Button onClick={handleRefresh} variant="outline" size="sm">
+                  Try Again
+                </Button>
+              </div>
+            </div>
+          ) : filteredBookings.length === 0 ? (
+            <div className="flex items-center justify-center h-64">
+              <div className="text-center">
+                <Calendar className="h-8 w-8 mx-auto mb-4 text-gray-400" />
+                <p className="text-gray-600 mb-2">No booking requests found</p>
+                <p className="text-sm text-gray-500">
+                  {searchTerm ? 'Try adjusting your search terms' : 'New pending booking requests will appear here.'}
+                </p>
+              </div>
+            </div>
+          ) : (
+            <BookingsTableAdvanced
+              bookings={filteredBookings.map(b => ({ ...b, balance: b.totalValue || 0 }))}
+              selectedRows={selectedRows}
+              onSelectedRowsChange={setSelectedRows}
+              sortConfig={sortConfig}
+              onSortChange={setSortConfig}
+              onRowClick={handleRowClick}
+              onBulkAction={handleBulkAction}
+              onConfirmOrder={handleConfirmOrder}
+              onCancelOrder={handleCancelOrder}
+            />
+          )}
         </CardContent>
       </Card>
 
