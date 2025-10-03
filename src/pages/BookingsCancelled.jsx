@@ -4,7 +4,6 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import {
-  Plus,
   Download,
   Search,
   Printer,
@@ -14,7 +13,9 @@ import {
   RefreshCw,
   AlertTriangle,
   FileText,
-  Eye,
+  Calendar,
+  Clock,
+  Building2,
   RotateCcw,
   Trash2,
 } from 'lucide-react';
@@ -152,6 +153,8 @@ export default function BookingsCancelled() {
     refunded: false,
     notRefunded: false,
   });
+  const [viewDialogOpen, setViewDialogOpen] = useState(false);
+  const [viewBooking, setViewBooking] = useState(null);
 
   // Fetch cancelled bookings from backend
   const fetchCancelledBookings = useCallback(async (isRefresh = false) => {
@@ -302,6 +305,75 @@ export default function BookingsCancelled() {
     setSelectedRows(newSelection);
   };
 
+  const handlePrintReport = useCallback(() => {
+    const dataToPrint = selectedRows.size > 0 
+      ? filteredBookings.filter(b => selectedRows.has(b.id))
+      : filteredBookings;
+
+    const summaryHtml = `
+      <div style="margin-bottom:16px;padding:12px;border:1px solid #e5e7eb;border-radius:8px">
+        <div style="font-weight:600;margin-bottom:8px">Summary</div>
+        <div style="display:flex;gap:16px;flex-wrap:wrap;font-size:12px;color:#374151">
+          <div>Total cancelled: <strong>${dataToPrint.length}</strong></div>
+          <div>Lost value: <strong>$${dataToPrint.reduce((s,b)=>s+(b.totalValue||0),0).toLocaleString('en-AU')}</strong></div>
+          <div>Refunded: <strong>${dataToPrint.filter(b=>b.deposit==='Refunded').length}</strong></div>
+        </div>
+      </div>`;
+
+    const html = `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <meta charset="utf-8" />
+          <title>Cancelled Bookings Report</title>
+          <style>
+            body { font-family: Arial, sans-serif; margin: 24px; color: #111827; }
+            h1 { font-size: 20px; margin: 0 0 12px; }
+            .meta { color: #6b7280; font-size: 12px; margin-bottom: 20px; }
+            .card { border: 1px solid #e5e7eb; border-radius: 8px; padding: 16px; margin-bottom: 12px; }
+            .row { display: flex; gap: 16px; flex-wrap: wrap; }
+            .col { min-width: 180px; }
+            .label { font-size: 11px; color: #6b7280; }
+            .value { font-size: 14px; font-weight: 600; }
+            hr { border: none; border-top: 1px solid #e5e7eb; margin: 12px 0; }
+          </style>
+        </head>
+        <body>
+          <h1>Bookings — Cancelled</h1>
+          <div class="meta">Generated ${format(new Date(), 'dd MMM yyyy HH:mm')}</div>
+          ${summaryHtml}
+          ${dataToPrint.map(b => `
+            <div class="card">
+              <div class="row">
+                <div class="col"><div class="label">Booking ID</div><div class="value">${b.id}</div></div>
+                <div class="col"><div class="label">Customer</div><div class="value">${b.customer.name}</div></div>
+                <div class="col"><div class="label">Email</div><div class="value">${b.customer.email}</div></div>
+                <div class="col"><div class="label">Resource</div><div class="value">${b.resource}</div></div>
+              </div>
+              <div class="row">
+                <div class="col"><div class="label">Event</div><div class="value">${format(b.start, 'dd MMM yyyy, HH:mm')} - ${format(b.end, 'HH:mm')}</div></div>
+                <div class="col"><div class="label">Cancelled</div><div class="value">${format(b.cancelledAt, 'dd MMM yyyy, HH:mm')}</div></div>
+                <div class="col"><div class="label">Reason</div><div class="value">${b.cancellationReason || ''}</div></div>
+              </div>
+              <hr />
+              <div class="row">
+                <div class="col"><div class="label">Total Value</div><div class="value">$${(b.totalValue||0).toLocaleString('en-AU')}</div></div>
+                <div class="col"><div class="label">Deposit</div><div class="value">${b.deposit}</div></div>
+                <div class="col"><div class="label">Guests</div><div class="value">${b.guests}</div></div>
+              </div>
+            </div>
+          `).join('')}
+          <script>window.onload = function(){ window.print(); };</script>
+        </body>
+      </html>`;
+
+    const w = window.open('', '_blank');
+    if (!w) return;
+    w.document.open();
+    w.document.write(html);
+    w.document.close();
+  }, [filteredBookings, selectedRows]);
+
   const handleExport = useCallback(() => {
     const dataToExport = selectedRows.size > 0 
       ? filteredBookings.filter(b => selectedRows.has(b.id))
@@ -358,10 +430,9 @@ export default function BookingsCancelled() {
             <RefreshCw className={`mr-2 h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
             {refreshing ? 'Refreshing...' : 'Refresh'}
           </Button>
-          <Button variant="outline"><Printer className="mr-2 h-4 w-4" />Print report</Button>
-          <Button variant="outline"><Mail className="mr-2 h-4 w-4" />Send refunds</Button>
+          <Button variant="outline" onClick={handlePrintReport}><Printer className="mr-2 h-4 w-4" />Print report</Button>
+          {/* Send refunds button removed by request */}
           <Button variant="outline" onClick={handleExport}><Download className="mr-2 h-4 w-4" />Export CSV</Button>
-          <Button><Plus className="mr-2 h-4 w-4" />New Booking</Button>
         </div>
       </header>
 
@@ -577,14 +648,17 @@ export default function BookingsCancelled() {
                       </TableCell>
                       <TableCell>
                         <div className="flex items-center gap-2">
-                          <Button variant="outline" size="sm">
-                            <Eye className="mr-1 h-3 w-3" />
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              setViewBooking(booking);
+                              setViewDialogOpen(true);
+                            }}
+                          >
                             View
                           </Button>
-                          <Button variant="outline" size="sm">
-                            <RotateCcw className="mr-1 h-3 w-3" />
-                            Refund
-                          </Button>
+                          {/* Refund action removed by request */}
                         </div>
                       </TableCell>
                     </TableRow>
@@ -595,6 +669,83 @@ export default function BookingsCancelled() {
           )}
         </CardContent>
       </Card>
+
+      {/* View Booking Dialog */}
+      <Dialog open={viewDialogOpen} onOpenChange={setViewDialogOpen}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Cancelled Booking Details</DialogTitle>
+            <DialogDescription>
+              Review the details of the cancelled booking.
+            </DialogDescription>
+          </DialogHeader>
+          {viewBooking && (
+            <div className="space-y-4">
+              {/* Gradient header */}
+              <div className="relative overflow-hidden rounded-2xl border">
+                <div className="absolute inset-0 bg-gradient-to-br from-rose-500 via-fuchsia-600 to-indigo-600" />
+                <div className="absolute inset-0 opacity-15" style={{backgroundImage:'radial-gradient(circle at 18% 18%, white 1px, transparent 1px)', backgroundSize:'16px 16px'}} />
+                <div className="relative p-5 text-white flex items-start gap-4">
+                  <div className="h-12 w-12 rounded-full bg-white/20 flex items-center justify-center text-lg font-bold">
+                    {viewBooking.customer.name.split(' ').map(s=>s[0]).slice(0,2).join('').toUpperCase()}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <h3 className="text-xl font-bold truncate">{viewBooking.customer.name}</h3>
+                      <Badge variant="secondary" className="bg-white/20 text-white border-white/30">Cancelled</Badge>
+                      <Badge variant="secondary" className="bg-white/20 text-white border-white/30">{viewBooking.deposit}</Badge>
+                    </div>
+                    <div className="mt-2 flex flex-wrap items-center gap-2 text-xs">
+                      <span className="inline-flex items-center gap-1 bg-white/15 px-2 py-1 rounded"><Building2 className="h-3 w-3" /> {viewBooking.resource}</span>
+                      <span className="inline-flex items-center gap-1 bg-white/15 px-2 py-1 rounded"><Calendar className="h-3 w-3" /> {format(viewBooking.start, 'dd MMM yyyy')}</span>
+                      <span className="inline-flex items-center gap-1 bg-white/15 px-2 py-1 rounded"><Clock className="h-3 w-3" /> {format(viewBooking.start, 'HH:mm')}–{format(viewBooking.end, 'HH:mm')}</span>
+                    </div>
+                    {viewBooking.cancellationReason && (
+                      <div className="mt-3 text-[13px]leading-5 bg-white/10 rounded px-3 py-2 border border-white/20">
+                        <span className="opacity-80">Reason:</span> {viewBooking.cancellationReason}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Key facts */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="rounded-lg border bg-gradient-to-br from-gray-50 to-white p-3">
+                  <div className="text-xs text-gray-500 mb-1">Booking ID</div>
+                  <div className="font-mono text-sm break-all text-gray-800">{viewBooking.id}</div>
+                </div>
+                <div className="rounded-lg border bg-gradient-to-br from-gray-50 to-white p-3">
+                  <div className="text-xs text-gray-500 mb-1">Email</div>
+                  <div className="text-sm text-gray-800 truncate">{viewBooking.customer.email}</div>
+                </div>
+                <div className="rounded-lg border bg-gradient-to-br from-gray-50 to-white p-3">
+                  <div className="text-xs text-gray-500 mb-1">Event</div>
+                  <div className="text-sm text-gray-800">{format(viewBooking.start, 'eeee, dd MMM yyyy')}</div>
+                </div>
+                <div className="rounded-lg border bg-gradient-to-br from-gray-50 to-white p-3">
+                  <div className="text-xs text-gray-500 mb-1">Cancelled At</div>
+                  <div className="text-sm text-gray-800">{format(viewBooking.cancelledAt, 'dd MMM yyyy, HH:mm')}</div>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="flex items-center justify-between rounded border p-3 bg-gray-50">
+                  <div className="text-sm text-gray-600">Guests</div>
+                  <div className="font-medium">{viewBooking.guests}</div>
+                </div>
+                <div className="flex items-center justify-between rounded border p-3 bg-gray-50">
+                  <div className="text-sm text-gray-600">Total Value</div>
+                  <div className="font-medium">${viewBooking.totalValue.toLocaleString('en-AU')}</div>
+                </div>
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setViewDialogOpen(false)}>Close</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </main>
   );
 }
