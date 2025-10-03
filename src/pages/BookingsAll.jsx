@@ -39,6 +39,7 @@ import { format, subDays, addDays, isToday, isTomorrow, isYesterday } from 'date
 import { useAuth } from '../contexts/AuthContext';
 import AdminBookingForm from '../components/bookings/AdminBookingForm';
 import { fetchResources } from '../services/bookingService';
+import { emailCommsAPI } from '../services/emailService';
 
 // Transform backend booking data to match frontend format
 const transformBookingData = (backendBooking) => {
@@ -75,6 +76,9 @@ const transformBookingData = (backendBooking) => {
       bookingHistory: 1, // Default, could be calculated from history
       totalSpent: backendBooking.calculatedPrice || 0,
     },
+    // Keep both id and name for edit operations and display
+    resourceId: backendBooking.selectedHall || backendBooking.hallId || backendBooking.resourceId,
+    resourceName: backendBooking.hallName || backendBooking.resourceName,
     resource: backendBooking.hallName || backendBooking.selectedHall,
     start: startDateTime,
     end: endDateTime,
@@ -120,6 +124,7 @@ export default function BookingsAll() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [refreshing, setRefreshing] = useState(false);
+  const [sendingPayLink, setSendingPayLink] = useState(false);
   const [confirmationModal, setConfirmationModal] = useState({
     isOpen: false,
     type: 'confirm',
@@ -137,6 +142,8 @@ export default function BookingsAll() {
     message: ''
   });
   const [showBookingForm, setShowBookingForm] = useState(false);
+  const [formMode, setFormMode] = useState('create');
+  const [formInitialData, setFormInitialData] = useState(null);
   const [showCalendar, setShowCalendar] = useState(false);
   
   // Advanced filter states
@@ -204,10 +211,10 @@ export default function BookingsAll() {
       const transformedBookings = backendBookings.map(transformBookingData);
       
       // Map resource IDs to names if available
-      const withResourceNames = transformedBookings.map(b => ({
-        ...b,
-        resource: resourceMap[b.resource] || b.resource,
-      }));
+      const withResourceNames = transformedBookings.map(b => {
+        const name = b.resourceName || (b.resourceId ? resourceMap[b.resourceId] : undefined) || b.resource;
+        return { ...b, resource: name };
+      });
       
       setBookings(withResourceNames);
       setFilteredBookings(withResourceNames);
@@ -243,9 +250,91 @@ export default function BookingsAll() {
   // When resource map loads later, remap existing bookings to names
   useEffect(() => {
     if (!resourceMap || Object.keys(resourceMap).length === 0) return;
-    setBookings(prev => prev.map(b => ({ ...b, resource: resourceMap[b.resource] || b.resource })));
-    setFilteredBookings(prev => prev.map(b => ({ ...b, resource: resourceMap[b.resource] || b.resource })));
+    setBookings(prev => prev.map(b => ({ ...b, resource: b.resourceName || (b.resourceId ? resourceMap[b.resourceId] : b.resource) || b.resource })));
+    setFilteredBookings(prev => prev.map(b => ({ ...b, resource: b.resourceName || (b.resourceId ? resourceMap[b.resourceId] : b.resource) || b.resource })));
   }, [resourceMap]);
+
+  // Open edit form from detail pane
+  const handleEdit = useCallback((booking) => {
+    setFormMode('edit');
+    // Map from table booking to AdminBookingForm initialData
+    const initial = {
+      id: booking.id,
+      customerName: booking.customer?.name || '',
+      customerEmail: booking.customer?.email || '',
+      customerPhone: booking.customerPhone || '',
+      eventType: booking.purpose || '',
+      selectedHall: booking.resourceId || '',
+      bookingDate: format(booking.start, 'yyyy-MM-dd'),
+      startTime: format(booking.start, 'HH:mm'),
+      endTime: format(booking.end, 'HH:mm'),
+      additionalDescription: booking.notes || '',
+      estimatedPrice: booking.totalValue || '',
+      guestCount: booking.guests || '',
+      status: booking.status || 'pending',
+    };
+    setFormInitialData(initial);
+    setShowBookingForm(true);
+  }, []);
+
+  // Send payment link via email (uses generic email-comms endpoint)
+  const handleSendPayLink = useCallback(async (booking) => {
+    try {
+      if (sendingPayLink) return;
+      setSendingPayLink(true);
+      const token = localStorage.getItem('token');
+      if (!token) throw new Error('No authentication token found');
+      if (!booking?.customer?.email) throw new Error('Customer email not available');
+
+      // Construct a simple payment link email. If you have invoices/payment pages,
+      // replace payUrl with your hosted payment page.
+      const payUrl = `https://cranbournehall.com/pay?bookingId=${encodeURIComponent(booking.id)}`;
+
+      const subject = `Payment link for ${booking.purpose}`;
+      const body = `Hi ${booking.customer.name},\n\n` +
+        `Please use the link below to make your payment for ${booking.purpose} on ${format(booking.start, 'eeee, dd MMMM yyyy')} (${format(booking.start, 'HH:mm')} - ${format(booking.end, 'HH:mm')}).\n\n` +
+        `${payUrl}\n\n` +
+        `If you have any questions, reply to this email.`;
+
+      await emailCommsAPI.sendEmail({
+        recipientEmail: booking.customer.email,
+        recipientName: booking.customer.name,
+        bookingId: booking.id,
+        customSubject: subject,
+        customBody: body,
+        variables: {
+          customerName: booking.customer.name,
+          bookingId: booking.id,
+          eventType: booking.purpose,
+          bookingDate: format(booking.start, 'yyyy-MM-dd'),
+          startTime: format(booking.start, 'HH:mm'),
+          endTime: format(booking.end, 'HH:mm'),
+          hallName: booking.resource,
+          calculatedPrice: booking.totalValue,
+          guestCount: booking.guests,
+          status: booking.status
+        }
+      }, token);
+
+      setToast({
+        isVisible: true,
+        type: 'success',
+        title: 'Payment Link Sent',
+        message: `Pay link emailed to ${booking.customer.email}`
+      });
+    } catch (err) {
+      console.error('Error sending pay link:', err);
+      setToast({
+        isVisible: true,
+        type: 'error',
+        title: 'Failed to Send Pay Link',
+        message: err.message
+      });
+    }
+    finally {
+      setSendingPayLink(false);
+    }
+  }, [sendingPayLink]);
 
   // Fetch bookings on component mount and when user changes
   useEffect(() => {
@@ -1070,12 +1159,14 @@ export default function BookingsAll() {
         {/* Revolutionary Detail Pane */}
         <AnimatePresence>
           {isDetailPaneOpen && selectedBooking && (
-            <BookingDetailPaneAdvanced
+              <BookingDetailPaneAdvanced
               booking={selectedBooking}
               onClose={() => {
                 setIsDetailPaneOpen(false);
                 setSelectedBooking(null);
               }}
+              onEdit={handleEdit}
+              
             />
           )}
         </AnimatePresence>
@@ -1123,11 +1214,12 @@ export default function BookingsAll() {
             setToast({
               isVisible: true,
               type: 'success',
-              title: 'Booking Created!',
-              message: `New booking created for ${newBooking.customerName}`
+              title: formMode === 'create' ? 'Booking Created!' : 'Booking Updated!',
+              message: `${formMode === 'create' ? 'Created' : 'Updated'} booking for ${newBooking.customerName}`
             });
           }}
-          mode="create"
+          initialData={formInitialData}
+          mode={formMode}
         />
       </div>
     </TooltipProvider>
