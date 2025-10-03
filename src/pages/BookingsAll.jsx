@@ -38,6 +38,7 @@ import ToastNotification from '../components/ui/ToastNotification';
 import { format, subDays, addDays, isToday, isTomorrow, isYesterday } from 'date-fns';
 import { useAuth } from '../contexts/AuthContext';
 import AdminBookingForm from '../components/bookings/AdminBookingForm';
+import { fetchResources } from '../services/bookingService';
 
 // Transform backend booking data to match frontend format
 const transformBookingData = (backendBooking) => {
@@ -108,6 +109,7 @@ export default function BookingsAll() {
   // State management with performance optimization
   const [bookings, setBookings] = useState([]);
   const [filteredBookings, setFilteredBookings] = useState([]);
+  const [resourceMap, setResourceMap] = useState({});
   const [selectedBooking, setSelectedBooking] = useState(null);
   const [selectedRows, setSelectedRows] = useState(new Set());
   const [searchTerm, setSearchTerm] = useState('');
@@ -201,8 +203,14 @@ export default function BookingsAll() {
       console.log('Received bookings from backend:', backendBookings);
       const transformedBookings = backendBookings.map(transformBookingData);
       
-      setBookings(transformedBookings);
-      setFilteredBookings(transformedBookings);
+      // Map resource IDs to names if available
+      const withResourceNames = transformedBookings.map(b => ({
+        ...b,
+        resource: resourceMap[b.resource] || b.resource,
+      }));
+      
+      setBookings(withResourceNames);
+      setFilteredBookings(withResourceNames);
       
     } catch (err) {
       console.error('Error fetching bookings:', err);
@@ -212,6 +220,32 @@ export default function BookingsAll() {
       setRefreshing(false);
     }
   }, [user]);
+
+  // Fetch resources once and build an ID->name map
+  useEffect(() => {
+    const loadResources = async () => {
+      try {
+        const token = localStorage.getItem('token');
+        if (!token) return;
+        const resources = await fetchResources(token);
+        const map = resources.reduce((acc, r) => {
+          acc[r.id] = r.name;
+          return acc;
+        }, {});
+        setResourceMap(map);
+      } catch (e) {
+        console.error('Failed to load resources:', e);
+      }
+    };
+    loadResources();
+  }, []);
+
+  // When resource map loads later, remap existing bookings to names
+  useEffect(() => {
+    if (!resourceMap || Object.keys(resourceMap).length === 0) return;
+    setBookings(prev => prev.map(b => ({ ...b, resource: resourceMap[b.resource] || b.resource })));
+    setFilteredBookings(prev => prev.map(b => ({ ...b, resource: resourceMap[b.resource] || b.resource })));
+  }, [resourceMap]);
 
   // Fetch bookings on component mount and when user changes
   useEffect(() => {

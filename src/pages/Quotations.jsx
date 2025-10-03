@@ -711,7 +711,7 @@ export default function Quotations() {
                     <TableRow
                       key={quotation.id}
                       data-state={selectedRows.has(quotation.id) ? 'selected' : ''}
-                      className="odd:bg-white even:bg-gray-50/60 hover:bg-blue-50/60 cursor-pointer"
+                      className="hover:bg-blue-50/60 cursor-pointer"
                       onClick={() => { setSelectedQuotation(quotation); setShowDetailPane(true); }}
                     >
                       <TableCell onClick={(e) => e.stopPropagation()}>

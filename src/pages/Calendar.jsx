@@ -602,13 +602,9 @@ export default function Calendar() {
             <RefreshCw className={`mr-2 h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
             {refreshing ? 'Refreshing...' : 'Refresh'}
           </Button>
-          <Button variant="outline">
+          <Button variant="outline" onClick={() => window.print()}>
             <Printer className="mr-2 h-4 w-4" />
             Print
-          </Button>
-          <Button variant="outline">
-            <Plus className="mr-2 h-4 w-4" />
-            Add Block-out
           </Button>
           <Button 
             variant="outline"
