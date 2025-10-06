@@ -53,7 +53,7 @@ export default function Users() {
   useEffect(() => {
     // Only fetch users if user is super admin
     if (isSuperAdmin()) {
-      fetch('http://localhost:5000/api/users')
+      fetch('/api/users')
         .then(res => res.json())
         .then(data => {
           // Filter out sub_users - super admin should only see hall_owners and super_admins
@@ -126,7 +126,7 @@ export default function Users() {
     if (!userToDelete) return;
 
     try {
-      const response = await fetch(`http://localhost:5000/api/users/${userToDelete.id}`, {
+      const response = await fetch(`/api/users/${userToDelete.id}`, {
         method: 'DELETE',
       });
 
@@ -135,7 +135,7 @@ export default function Users() {
         setTimeout(() => setSuccessMessage(''), 3000);
         
         // Refresh users list
-        const updatedUsers = await fetch('http://localhost:5000/api/users').then(res => res.json());
+        const updatedUsers = await fetch('/api/users').then(res => res.json());
         setUsers(updatedUsers);
         setFiltered(updatedUsers);
         
@@ -168,7 +168,7 @@ export default function Users() {
         userData.address = editingUser.address;
       }
 
-      const response = await fetch(`http://localhost:5000/api/users/${editingUser.id}`, {
+      const response = await fetch(`/api/users/${editingUser.id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -181,7 +181,7 @@ export default function Users() {
         setTimeout(() => setSuccessMessage(''), 3000);
         
         // Refresh users list
-        const updatedUsers = await fetch('http://localhost:5000/api/users').then(res => res.json());
+        const updatedUsers = await fetch('/api/users').then(res => res.json());
         setUsers(updatedUsers);
         setFiltered(updatedUsers);
         
@@ -235,7 +235,7 @@ export default function Users() {
         userData.address = newUser.address;
       }
 
-      const response = await fetch('http://localhost:5000/api/users', {
+      const response = await fetch('/api/users', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -255,7 +255,7 @@ export default function Users() {
             const formData = new FormData();
             formData.append('profilePicture', profilePictureFile);
             
-            const uploadResponse = await fetch(`http://localhost:5000/api/users/upload-profile-picture`, {
+            const uploadResponse = await fetch(`/api/users/upload-profile-picture`, {
               method: 'POST',
               headers: {
                 'Authorization': `Bearer ${token}`,
@@ -275,8 +275,8 @@ export default function Users() {
         setSuccessMessage(`${newUser.role === 'hall_owner' ? 'Hall Owner' : 'Super Admin'} account created successfully!`);
         setTimeout(() => setSuccessMessage(''), 3000);
         
-        // Refresh users list
-        const updatedUsers = await fetch('http://localhost:5000/api/users').then(res => res.json());
+        // Refresh users list           
+        const updatedUsers = await fetch('/api/users').then(res => res.json());
         setUsers(updatedUsers);
         setFiltered(updatedUsers);
         

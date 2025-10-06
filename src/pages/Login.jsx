@@ -25,7 +25,7 @@ export default function Login() {
       const idToken = await userCredential.user.getIdToken();
       
       // Then, send the ID token to our backend to get custom JWT
-      const res = await fetch('http://localhost:5000/api/login', {
+      const res = await fetch('/api/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ idToken }),

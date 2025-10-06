@@ -1,10 +1,10 @@
 // Email service for API calls
-const API_BASE_URL = 'http://localhost:5000/api';
+const API_BASE_URL = '/api';
 
 // Email Templates API
 export const emailTemplatesAPI = {
   // Get all email templates
-  async getTemplates(token, params = {}) {
+  async getTemplates(token, params = {}) {      
     try {
       const queryParams = new URLSearchParams(params);
       const response = await fetch(`${API_BASE_URL}/email-templates?${queryParams}`, {

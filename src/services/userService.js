@@ -90,13 +90,13 @@ export const changePassword = async (currentPassword, newPassword) => {
         throw new Error('Failed to verify current password');
       }
     }
-    
+
     // Update password
     await updatePassword(user, newPassword);
     
     // Log the password change to backend for audit purposes
     const token = await user.getIdToken();
-    const response = await fetch('http://localhost:5000/api/users/log-password-change', {
+    const response = await fetch('/api/users/log-password-change', {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${token}`,

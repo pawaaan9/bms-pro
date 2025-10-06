@@ -26,7 +26,7 @@ export const AuthProvider = ({ children }) => {
 
   const fetchUserProfile = async (token) => {
     try {
-      const response = await fetch('http://localhost:5000/api/users/profile', {
+      const response = await fetch('/api/users/profile', {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -41,7 +41,7 @@ export const AuthProvider = ({ children }) => {
         // If this is a sub-user, fetch parent user data
         if (userData.role === 'sub_user' && userData.parentUserId) {
           try {
-            const parentResponse = await fetch(`http://localhost:5000/api/users/parent-data/${userData.parentUserId}`, {
+            const parentResponse = await fetch(`/api/users/parent-data/${userData.parentUserId}`, {
               headers: {
                 'Authorization': `Bearer ${token}`,
                 'Content-Type': 'application/json'
@@ -70,7 +70,7 @@ export const AuthProvider = ({ children }) => {
 
   const fetchUserSettings = async (token) => {
     try {
-      const response = await fetch('http://localhost:5000/api/users/settings', {
+      const response = await fetch('/api/users/settings', {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'

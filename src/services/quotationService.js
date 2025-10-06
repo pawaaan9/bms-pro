@@ -1,10 +1,10 @@
 // Quotation service for API calls
-const API_BASE_URL = 'http://localhost:5000/api';
+const API_BASE_URL = '/api';
 
 // Create a new quotation
 export const createQuotation = async (quotationData, token) => {
   try {
-    const response = await fetch(`${API_BASE_URL}/quotations`, {
+    const response = await fetch(`${API_BASE_URL}/quotations`, {  
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${token}`,

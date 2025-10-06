@@ -4,7 +4,7 @@ export const auditDiagnostic = {
   // Check if backend is running
   async checkBackendStatus() {
     try {
-      const response = await fetch('http://localhost:5000/api/audit/actions', {
+      const response = await fetch('/api/audit/actions', {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`,
@@ -41,9 +41,9 @@ export const auditDiagnostic = {
   // Test audit API endpoints
   async testAuditEndpoints() {
     const token = localStorage.getItem('token');
-    const baseUrl = 'http://localhost:5000/api';
+    const baseUrl = '/api';
     
-    console.log('🧪 Testing Audit API Endpoints:');
+    console.log('🧪 Testing Audit API Endpoints:'); 
     
     // Test 1: Actions endpoint
     try {

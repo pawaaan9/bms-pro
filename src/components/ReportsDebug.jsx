@@ -12,7 +12,7 @@ const ReportsDebug = () => {
       hasToken: !!localStorage.getItem('token'),
       tokenValue: localStorage.getItem('token')?.substring(0, 20) + '...',
       userRole: localStorage.getItem('role'),
-      apiBaseUrl: import.meta.env.VITE_API_URL || 'http://localhost:5000/api',
+      apiBaseUrl: import.meta.env.VITE_API_URL || '/api',
       timestamp: new Date().toISOString()
     };
 
@@ -23,7 +23,7 @@ const ReportsDebug = () => {
     
     // Test 1: Basic connectivity
     try {
-      const response = await fetch('http://localhost:5000/api/reports/executive-kpis', {
+      const response = await fetch('/api/reports/executive-kpis', {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`,
@@ -57,7 +57,7 @@ const ReportsDebug = () => {
 
     // Test 2: Check if backend is running
     try {
-      const healthResponse = await fetch('http://localhost:5000/api/bookings/test');
+      const healthResponse = await fetch('/api/bookings/test');
       results.backendHealth = {
         status: healthResponse.status,
         running: healthResponse.ok

@@ -184,7 +184,7 @@ export default function BookingsCancelled() {
 
       console.log('Fetching cancelled bookings for hall owner ID:', hallOwnerId);
       
-      const response = await fetch(`http://localhost:5000/api/bookings/hall-owner/${hallOwnerId}`, {
+      const response = await fetch(`/api/bookings/hall-owner/${hallOwnerId}`, {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${token}`,

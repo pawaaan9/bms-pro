@@ -85,7 +85,7 @@ export default function SettingsRoles() {
     try {
       setLoading(true);
       const token = getToken();
-      const response = await fetch(`http://localhost:5000/api/users/sub-users/${user.id}`, {
+      const response = await fetch(`/api/users/sub-users/${user.id}`, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -126,7 +126,7 @@ export default function SettingsRoles() {
     setIsSubmitting(true);
     try {
       const token = getToken();
-      const response = await fetch('http://localhost:5000/api/users', {
+      const response = await fetch('/api/users', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -165,7 +165,7 @@ export default function SettingsRoles() {
     setIsSubmitting(true);
     try {
       const token = getToken();
-      const response = await fetch(`http://localhost:5000/api/users/sub-users/${editingUser.id}`, {
+      const response = await fetch(`/api/users/sub-users/${editingUser.id}`, {
         method: 'PUT',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -201,7 +201,7 @@ export default function SettingsRoles() {
     setIsSubmitting(true);
     try {
       const token = getToken();
-      const response = await fetch(`http://localhost:5000/api/users/${selectedUser.id}`, {
+      const response = await fetch(`/api/users/${selectedUser.id}`, {          
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -294,7 +294,7 @@ export default function SettingsRoles() {
 
       // Call backend API to change sub-user password
       const token = getToken();
-      const response = await fetch(`http://localhost:5000/api/users/change-sub-user-password`, {
+      const response = await fetch(`/api/users/change-sub-user-password`, {
         method: 'PUT',
         headers: {
           'Authorization': `Bearer ${token}`,

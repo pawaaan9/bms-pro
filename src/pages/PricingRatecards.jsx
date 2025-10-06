@@ -80,7 +80,7 @@ export default function PricingRatecards() {
     try {
       setLoading(true);
       const token = localStorage.getItem('token');
-      const response = await fetch('http://localhost:5000/api/resources', {
+      const response = await fetch('/api/resources', {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -104,7 +104,7 @@ export default function PricingRatecards() {
   const fetchPricing = async () => {
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch('http://localhost:5000/api/pricing', {
+      const response = await fetch('/api/pricing', {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -161,8 +161,8 @@ export default function PricingRatecards() {
     try {
       const token = localStorage.getItem('token');
       const url = editingPricing 
-        ? `http://localhost:5000/api/pricing/${editingPricing.id}`
-        : 'http://localhost:5000/api/pricing';
+        ? `/api/pricing/${editingPricing.id}`
+        : '/api/pricing';
       
       const method = editingPricing ? 'PUT' : 'POST';
       const pricingData = {
@@ -215,7 +215,7 @@ export default function PricingRatecards() {
 
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`http://localhost:5000/api/pricing/${pricingToDelete.id}`, {
+      const response = await fetch(`/api/pricing/${pricingToDelete.id}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`,

@@ -245,7 +245,7 @@ export default function BookingsConfirmed() {
 
       console.log('Fetching confirmed bookings for hall owner ID:', hallOwnerId);
       
-      const response = await fetch(`http://localhost:5000/api/bookings/hall-owner/${hallOwnerId}`, {
+      const response = await fetch(`/api/bookings/hall-owner/${hallOwnerId}`, {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -590,7 +590,7 @@ export default function BookingsConfirmed() {
 
           console.log('Completing booking:', bookingId);
           
-          const response = await fetch(`http://localhost:5000/api/bookings/${bookingId}/status`, {
+          const response = await fetch(`/api/bookings/${bookingId}/status`, {
             method: 'PUT',
             headers: {
               'Authorization': `Bearer ${token}`,

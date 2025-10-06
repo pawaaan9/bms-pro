@@ -1,5 +1,5 @@
 // Booking service for API calls
-const API_BASE_URL = 'http://localhost:5000/api';
+const API_BASE_URL = '/api';
 
 // Transform backend booking data to calendar event format
 export const transformBookingToCalendarEvent = (backendBooking) => {

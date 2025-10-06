@@ -79,7 +79,7 @@ export default function Resources() {
       
       const token = localStorage.getItem('token');
       
-      const response = await fetch('http://localhost:5000/api/resources', {
+      const response = await fetch('/api/resources', {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -124,8 +124,8 @@ export default function Resources() {
     try {
       const token = localStorage.getItem('token');
       const url = editingResource 
-        ? `http://localhost:5000/api/resources/${editingResource.id}`
-        : 'http://localhost:5000/api/resources';
+        ? `/api/resources/${editingResource.id}`
+        : '/api/resources';
       
       const method = editingResource ? 'PUT' : 'POST';
       const data = editingResource ? editingResource : newResource;
@@ -167,7 +167,7 @@ export default function Resources() {
 
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`http://localhost:5000/api/resources/${resourceToDelete.id}`, {
+      const response = await fetch(`/api/resources/${resourceToDelete.id}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`,

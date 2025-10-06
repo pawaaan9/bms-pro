@@ -126,7 +126,7 @@ export default function BookingsHolds() {
       console.log('Fetching pending bookings for hall owner ID:', hallOwnerId);
       
       // Fetch only pending bookings from backend
-      const response = await fetch(`http://localhost:5000/api/bookings/hall-owner/${hallOwnerId}?status=pending`, {
+      const response = await fetch(`/api/bookings/hall-owner/${hallOwnerId}?status=pending`, {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -246,7 +246,7 @@ export default function BookingsHolds() {
 
       console.log('Confirming booking:', booking.id);
       
-      const response = await fetch(`http://localhost:5000/api/bookings/${booking.id}/status`, {
+      const response = await fetch(`/api/bookings/${booking.id}/status`, {
         method: 'PUT',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -298,7 +298,7 @@ export default function BookingsHolds() {
 
       console.log('Cancelling booking:', booking.id);
       
-      const response = await fetch(`http://localhost:5000/api/bookings/${booking.id}/status`, {
+      const response = await fetch(`/api/bookings/${booking.id}/status`, {
         method: 'PUT',
         headers: {
           'Authorization': `Bearer ${token}`,
