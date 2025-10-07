@@ -4,10 +4,9 @@ const API_BASE_URL = '/api';
 // Fetch dashboard statistics
 export const fetchDashboardStats = async (token, hallOwnerId, resourceId = 'all') => {
   try {
-    const url = new URL(`${API_BASE_URL}/dashboard/stats`);
-    url.searchParams.append('hallOwnerId', hallOwnerId);
+    let url = `${API_BASE_URL}/dashboard/stats?hallOwnerId=${hallOwnerId}`;
     if (resourceId && resourceId !== 'all') {
-      url.searchParams.append('resourceId', resourceId);
+      url += `&resourceId=${resourceId}`;
     }
     
     const response = await fetch(url, {
@@ -34,10 +33,9 @@ export const fetchDashboardStats = async (token, hallOwnerId, resourceId = 'all'
 // Fetch today's schedule
 export const fetchTodaySchedule = async (token, hallOwnerId, resourceId = 'all') => {
   try {
-    const url = new URL(`${API_BASE_URL}/dashboard/schedule`);
-    url.searchParams.append('hallOwnerId', hallOwnerId);
+    let url = `${API_BASE_URL}/dashboard/schedule?hallOwnerId=${hallOwnerId}`;
     if (resourceId && resourceId !== 'all') {
-      url.searchParams.append('resourceId', resourceId);
+      url += `&resourceId=${resourceId}`;
     }
     
     const response = await fetch(url, {
@@ -64,8 +62,7 @@ export const fetchTodaySchedule = async (token, hallOwnerId, resourceId = 'all')
 // Fetch payments due
 export const fetchPaymentsDue = async (token, hallOwnerId) => {
   try {
-    const url = new URL(`${API_BASE_URL}/dashboard/payments-due`);
-    url.searchParams.append('hallOwnerId', hallOwnerId);
+    const url = `${API_BASE_URL}/dashboard/payments-due?hallOwnerId=${hallOwnerId}`;
     
     const response = await fetch(url, {
       method: 'GET',
@@ -91,8 +88,7 @@ export const fetchPaymentsDue = async (token, hallOwnerId) => {
 // Fetch holds expiring
 export const fetchHoldsExpiring = async (token, hallOwnerId) => {
   try {
-    const url = new URL(`${API_BASE_URL}/dashboard/holds-expiring`);
-    url.searchParams.append('hallOwnerId', hallOwnerId);
+    const url = `${API_BASE_URL}/dashboard/holds-expiring?hallOwnerId=${hallOwnerId}`;
     
     const response = await fetch(url, {
       method: 'GET',
@@ -118,8 +114,7 @@ export const fetchHoldsExpiring = async (token, hallOwnerId) => {
 // Fetch recent activity
 export const fetchRecentActivity = async (token, hallOwnerId) => {
   try {
-    const url = new URL(`${API_BASE_URL}/dashboard/activity`);
-    url.searchParams.append('hallOwnerId', hallOwnerId);
+    const url = `${API_BASE_URL}/dashboard/activity?hallOwnerId=${hallOwnerId}`;
     
     const response = await fetch(url, {
       method: 'GET',
@@ -145,8 +140,7 @@ export const fetchRecentActivity = async (token, hallOwnerId) => {
 // Fetch resources for the hall owner
 export const fetchDashboardResources = async (token, hallOwnerId) => {
   try {
-    const url = new URL(`${API_BASE_URL}/dashboard/resources`);
-    url.searchParams.append('hallOwnerId', hallOwnerId);
+    const url = `${API_BASE_URL}/dashboard/resources?hallOwnerId=${hallOwnerId}`;
     
     const response = await fetch(url, {
       method: 'GET',
